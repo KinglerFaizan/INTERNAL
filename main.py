@@ -1,296 +1,42 @@
+"""
+Audit Intel — Global Banking Audit Intelligence
+------------------------------------------------
+Streamlit news-intelligence dashboard with an editorial / financial design,
+matching the Visily reference UI.
+
+The news pipeline is preserved from the original app:
+  - 5 targeted NewsAPI searches run concurrently
+  - deduplication by URL and normalized title
+  - transparent audit-relevance scoring (internal to ranking/filtering)
+  - rule-based keyword classification
+  - lookback days, ingestion depth (articles/category), diagnostics, CSV export
+"""
+
+import html
 import os
+import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlparse
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote, urlparse
 
 import pandas as pd
 import requests
 import streamlit as st
 
-try:
-    from config import API_KEY as CONFIG_API_KEY
-except ImportError:
-    CONFIG_API_KEY = ""
+from config import API_KEY as CONFIG_API_KEY
 
 
-# ---------------------------------------------------------
-# 1. APP CONFIGURATION & LIGHT EDITORIAL PALETTE
-# ---------------------------------------------------------
+# ---------------------------------------------------------------------------
+# APP CONFIGURATION
+# ---------------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Audit Intel | Global Banking Briefing",
-    page_icon="🛡️",
+    page_title="Audit Intel — Global Banking Audit Intelligence",
+    page_icon="🏦",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded",
 )
-
-# Light editorial / financial-intelligence-platform theme, matching the Visily reference:
-# white canvas, compact top nav, blue accent, category-colored badges, card-based feed.
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
-    :root {
-        --bg: #F7F8FA;
-        --card: #FFFFFF;
-        --border: #E5E7EB;
-        --text-primary: #111827;
-        --text-secondary: #6B7280;
-        --text-muted: #9CA3AF;
-        --accent-blue: #2563EB;
-        --accent-blue-dark: #1D4ED8;
-    }
-
-    .stApp {
-        background: var(--bg);
-        color: var(--text-primary);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-
-    #MainMenu, header[data-testid="stHeader"] { background: transparent; }
-
-    /* ---------------- Top navigation ---------------- */
-    .topnav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 6px 2px 16px 2px;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 18px;
-    }
-    .topnav-left { display: flex; align-items: center; gap: 10px; }
-    .logo-icon {
-        width: 32px; height: 32px; border-radius: 8px;
-        background: var(--accent-blue);
-        display: flex; align-items: center; justify-content: center;
-        color: #fff; font-size: 15px;
-    }
-    .logo-text { font-weight: 800; font-size: 17.5px; color: var(--text-primary); letter-spacing: -0.2px; }
-    .topnav-right { display: flex; align-items: center; gap: 22px; font-size: 13.5px; font-weight: 600; color: #4B5563; }
-    .topnav-right span { cursor: default; }
-    .avatar-circle-sm {
-        width: 30px; height: 30px; border-radius: 50%;
-        background: #E5E7EB; display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 12.5px; color: #374151;
-    }
-
-    /* ---------------- Section headings ---------------- */
-    .section-heading {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 4px 0 14px 0;
-    }
-    .page-title {
-        font-size: 26px;
-        font-weight: 800;
-        color: var(--text-primary);
-        letter-spacing: -0.5px;
-        margin-bottom: 2px;
-    }
-    .page-subtitle {
-        font-size: 13px;
-        color: var(--text-secondary);
-        margin-bottom: 20px;
-    }
-
-    /* ---------------- Pill tabs ---------------- */
-    div[data-testid="stTabs"] { margin-top: 4px; margin-bottom: 20px; }
-    div[data-testid="stTabs"] [role="tablist"] { gap: 4px; border-bottom: 1px solid var(--border); }
-    div[data-testid="stTabs"] button[role="tab"] {
-        border-radius: 0 !important;
-        padding: 8px 16px !important;
-        font-size: 12.5px !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
-        background: transparent !important;
-        border: none !important;
-        border-bottom: 2px solid transparent !important;
-        color: var(--text-muted) !important;
-    }
-    div[data-testid="stTabs"] button[role="tab"]:hover { color: var(--text-primary) !important; }
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        color: var(--accent-blue) !important;
-        border-bottom: 2px solid var(--accent-blue) !important;
-    }
-
-    /* ---------------- Search input ---------------- */
-    .stTextInput>div>div>input {
-        background-color: #fff !important;
-        border: 1px solid var(--border) !important;
-        color: var(--text-primary) !important;
-        border-radius: 10px !important;
-        padding: 11px 16px !important;
-        font-size: 14px !important;
-    }
-    .stTextInput>div>div>input:focus {
-        border-color: var(--accent-blue) !important;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
-    }
-
-    /* ---------------- Buttons ---------------- */
-    .stButton>button {
-        background: var(--accent-blue);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 13.5px;
-        padding: 9px 18px;
-    }
-    .stButton>button:hover { background: var(--accent-blue-dark); }
-    [data-testid="stDownloadButton"]>button {
-        background: #fff;
-        color: var(--accent-blue);
-        border: 1px solid var(--accent-blue);
-        border-radius: 8px;
-        font-weight: 600;
-    }
-    [data-testid="stDownloadButton"]>button:hover { background: #EFF6FF; }
-
-    /* ---------------- Featured Analysis hero ---------------- */
-    .featured-hero {
-        position: relative;
-        height: 360px;
-        border-radius: 16px;
-        background-size: cover;
-        background-position: center;
-        overflow: hidden;
-        margin-bottom: 30px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    }
-    .featured-badge {
-        position: absolute; top: 20px; left: 20px;
-        color: #fff; font-size: 11px; font-weight: 700;
-        padding: 5px 12px; border-radius: 6px;
-        text-transform: uppercase; letter-spacing: 0.5px;
-        z-index: 2;
-    }
-    .featured-text { position: absolute; bottom: 24px; left: 28px; right: 28px; z-index: 2; }
-    .featured-title {
-        font-size: 27px; font-weight: 800; color: #fff; line-height: 1.28;
-        margin-bottom: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.35);
-    }
-    .featured-meta { font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
-    .featured-link-overlay { position: absolute; inset: 0; z-index: 3; }
-
-    /* ---------------- Insight cards (Latest Insights) ---------------- */
-    .insight-card {
-        display: flex;
-        gap: 20px;
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 16px;
-        margin-bottom: 16px;
-        transition: box-shadow 0.15s ease, border-color 0.15s ease;
-    }
-    .insight-card:hover { border-color: #D1D5DB; box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
-    .insight-thumb {
-        width: 180px; min-width: 180px; height: 128px;
-        background-size: cover; background-position: center;
-        background-color: #F3F4F6;
-        border-radius: 10px;
-    }
-    .insight-thumb-empty {
-        display: flex; align-items: center; justify-content: center;
-        font-size: 28px; color: #C7CBD3;
-    }
-    .insight-content { display: flex; flex-direction: column; min-width: 0; }
-    .insight-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .badge {
-        display: inline-block; color: #fff; font-size: 10.5px; font-weight: 700;
-        padding: 3px 10px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.4px;
-    }
-    .insight-date { font-size: 12px; color: var(--text-muted); font-weight: 500; }
-    .insight-title-link { text-decoration: none; }
-    .insight-title {
-        font-size: 17px; font-weight: 700; color: var(--text-primary);
-        line-height: 1.35; margin-bottom: 6px;
-    }
-    .insight-title-link:hover .insight-title { color: var(--accent-blue); }
-    .insight-desc {
-        font-size: 13.5px; color: var(--text-secondary); line-height: 1.55;
-        margin-bottom: 12px;
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .insight-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
-    .score-chip {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 10.5px; font-weight: 600; color: #B45309;
-        background: #FEF3C7; padding: 3px 10px; border-radius: 20px;
-    }
-    .read-link {
-        font-size: 12.5px; font-weight: 700; color: var(--accent-blue); text-decoration: none;
-    }
-    .read-link:hover { text-decoration: underline; }
-
-    /* ---------------- Right sidebar panels ---------------- */
-    .side-panel {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 18px 20px;
-        margin-bottom: 16px;
-    }
-    .side-panel-title {
-        font-size: 11px; font-weight: 700; color: var(--text-secondary);
-        text-transform: uppercase; letter-spacing: 0.8px;
-        margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
-    }
-    .avatar-circle {
-        width: 44px; height: 44px; border-radius: 50%;
-        background: linear-gradient(135deg, #2563EB, #7C3AED);
-        color: #fff; display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 16px; flex-shrink: 0;
-    }
-    .trend-row, .filter-row, .pulse-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 8px 0; border-bottom: 1px solid #F3F4F6; font-size: 13px; color: #374151;
-    }
-    .trend-row:last-child, .filter-row:last-child, .pulse-row:last-child { border-bottom: none; }
-    .trend-count {
-        background: #F3F4F6; color: var(--text-secondary); font-size: 11px; font-weight: 700;
-        padding: 2px 9px; border-radius: 10px;
-    }
-    .filter-value { font-weight: 600; color: var(--text-primary); }
-    .pulse-value { font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; }
-
-    .cta-panel {
-        background: linear-gradient(135deg, #2563EB, #1D4ED8);
-        border-radius: 14px;
-        padding: 20px 22px 6px 22px;
-        color: #fff;
-        margin-bottom: -4px;
-    }
-    .cta-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
-    .cta-desc { font-size: 12.5px; color: rgba(255,255,255,0.85); line-height: 1.5; margin-bottom: 14px; }
-
-    /* ---------------- Empty state ---------------- */
-    .empty-state-panel {
-        text-align: center; padding: 48px;
-        background: var(--card); border-radius: 16px; border: 1px dashed var(--border);
-        margin-top: 14px;
-    }
-
-    /* ---------------- Footer ---------------- */
-    .app-footer {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        padding-top: 22px; margin-top: 8px;
-    }
-    .footer-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 800; font-size: 14.5px; color: var(--text-primary); }
-    .footer-tagline { font-size: 12px; color: var(--text-muted); max-width: 320px; line-height: 1.5; }
-    .footer-links { display: flex; gap: 22px; font-size: 12.5px; color: var(--text-secondary); font-weight: 600; }
-    .footer-copyright { font-size: 11.5px; color: var(--text-muted); margin-top: 18px; }
-</style>
-""", unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------
-# 2. BANKING AUDIT CATEGORIES & QUERIES (NO CYBER & TECH)
-# ---------------------------------------------------------
 
 CATEGORIES = {
     "Transformation": {
@@ -302,26 +48,15 @@ CATEGORIES = {
     "People": {
         "query": '("bank" OR "banking" OR "financial institution") AND ("audit" OR "risk" OR "governance" OR "controls") AND ("appointed" OR "appointment" OR "CEO" OR "CFO" OR "CRO" OR "CISO" OR "chief audit" OR "internal audit" OR "audit committee" OR "board")'
     },
+    "Cyber and Tech": {
+        "query": '("bank" OR "banking" OR "financial institution") AND ("audit" OR "IT controls" OR "risk" OR "governance") AND ("cybersecurity" OR "cyber attack" OR "ransomware" OR "data breach" OR "information security" OR "technology risk" OR "IT audit" OR "cloud security" OR "AI governance" OR "model risk")'
+    },
     "Global Banks": {
         "query": '("bank" OR "banking group" OR "financial institution") AND ("audit" OR "internal controls" OR "risk" OR "governance" OR "regulatory") AND ("HSBC" OR "JPMorgan" OR "JPMorgan Chase" OR "Citi" OR "Citigroup" OR "Barclays" OR "Deutsche Bank" OR "UBS" OR "BNP Paribas" OR "Santander" OR "Standard Chartered" OR "Bank of America" OR "Goldman Sachs" OR "Morgan Stanley" OR "Wells Fargo" OR "ING" OR "ICBC" OR "MUFG" OR "Mizuho")'
     },
 }
 
-# Display labels + badge colors for each category (matches the reference's colored pills)
-CATEGORY_DISPLAY = {
-    "Transformation": "Transformation",
-    "Regulation": "Regulation",
-    "People": "People",
-    "Global Banks": "Global Banking",
-}
-CATEGORY_COLORS = {
-    "Transformation": "#2563EB",
-    "Regulation": "#16A34A",
-    "People": "#6B7280",
-    "Global Banks": "#7C3AED",
-}
-
-# Audit vocabulary for relevance scoring
+# Extra audit vocabulary is used to remove ordinary banking stories.
 AUDIT_TERMS = [
     "internal audit", "external audit", "audit committee", "auditor",
     "audit finding", "audit findings", "internal control", "internal controls",
@@ -329,7 +64,8 @@ AUDIT_TERMS = [
     "control deficiencies", "governance", "risk management", "operational risk",
     "model risk", "compliance", "regulatory", "regulation", "supervision",
     "supervisory", "enforcement", "aml", "anti-money laundering", "kyc",
-    "sanctions", "fraud", "misconduct", "financial crime",
+    "sanctions", "cybersecurity", "cyber security", "it audit", "technology risk",
+    "data breach", "ransomware", "fraud", "misconduct", "financial crime",
 ]
 
 CATEGORY_TERMS = {
@@ -349,6 +85,11 @@ CATEGORY_TERMS = {
         "internal audit", "audit committee", "board", "director", "chairman",
         "chairwoman", "leadership", "executive",
     ],
+    "Cyber and Tech": [
+        "cybersecurity", "cyber security", "cyber attack", "ransomware",
+        "data breach", "information security", "technology risk", "it audit",
+        "cloud security", "ai governance", "model risk", "digital", "technology",
+    ],
     "Global Banks": [
         "hsbc", "jpmorgan", "jpmorgan chase", "citi", "citigroup", "barclays",
         "deutsche bank", "ubs", "bnpparibas", "bnp paribas", "santander",
@@ -357,16 +98,326 @@ CATEGORY_TERMS = {
     ],
 }
 
-# Acronyms that should stay uppercase in the "Trending Topics" panel
-_ACRONYMS = {"rbi", "aml", "kyc", "ceo", "cfo", "cro", "ciso"}
+# UI metadata for categories (display labels + subtle finance palette).
+CATEGORY_META = {
+    "Transformation": {"label": "Transformation", "color": "#2563EB", "tint": "#EAF1FE", "emoji": "🔄"},
+    "Regulation":     {"label": "Regulation",     "color": "#C7740A", "tint": "#FDF3E7", "emoji": "🏛️"},
+    "People":         {"label": "People",         "color": "#0E9F6E", "tint": "#E9F8F2", "emoji": "👥"},
+    "Cyber and Tech": {"label": "Cyber & Tech",   "color": "#6D4BD8", "tint": "#F1EDFC", "emoji": "🛡️"},
+    "Global Banks":   {"label": "Global Banking", "color": "#0F766E", "tint": "#E8F6F5", "emoji": "🌐"},
+}
 
 
-# ---------------------------------------------------------
-# 3. EXTRACTION LOGIC & SCORING FUNCTIONS (unchanged behavior)
-# ---------------------------------------------------------
+# ---------------------------------------------------------------------------
+# GLOBAL STYLES (editorial / financial, light theme, subtle blue accents)
+# ---------------------------------------------------------------------------
+
+APP_CSS = """
+<style>
+:root {
+    --ink: #0A1B33;
+    --body: #3D4D63;
+    --muted: #74849B;
+    --line: #E4E9F2;
+    --panel: #F5F8FC;
+    --accent: #1B5DC9;
+    --accent-deep: #0F3E91;
+    --blue-tint: #EAF1FD;
+    --white: #FFFFFF;
+    --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --sans: 'Inter', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+.stApp { background: var(--white); color: var(--body); font-family: var(--sans); }
+footer, #MainMenu { visibility: hidden; }
+h1, h2, h3, h4 { font-family: var(--serif); color: var(--ink); }
+
+/* --- compact top navigation --- */
+.audit-topbar { display:flex; align-items:center; gap:14px; padding:6px 0 10px; }
+.brand-mark {
+    width:40px; height:40px; border-radius:12px; flex:0 0 auto;
+    background: linear-gradient(135deg, #123C74, #2E77D0);
+    color:#fff; font-weight:800; font-size:15px; letter-spacing:.6px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 6px 14px -6px rgba(18,60,116,.45);
+}
+.brand-name { font-weight:800; color:var(--ink); font-size:17px; letter-spacing:-.2px; line-height:1.15; }
+.brand-sub { font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:1.4px; }
+.live-line { display:flex; align-items:center; gap:7px; justify-content:flex-end; font-size:11.5px; color:var(--muted); font-weight:600; }
+.live-dot { width:8px; height:8px; border-radius:50%; background:#16A34A; box-shadow:0 0 0 3px rgba(22,163,74,.18); display:inline-block; }
+
+/* --- search bar --- */
+div[data-testid="stTextInput"] div[data-baseweb="input"] { border-radius:999px !important; border:1px solid #D9E1EC !important; background:#F4F7FB !important; }
+div[data-testid="stTextInput"] input { background:transparent !important; color:var(--ink) !important; font-size:14px !important; }
+div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within { border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(27,93,201,.12) !important; background:#fff !important; }
+
+/* --- buttons --- */
+.stButton > button, .stDownloadButton > button {
+    border:1px solid #D9E1EC !important; background:#fff !important; color:var(--ink) !important;
+    border-radius:10px !important; font-weight:600 !important; font-size:13px !important; height:38px !important;
+}
+.stButton > button:hover, .stDownloadButton > button:hover { border-color:var(--accent) !important; color:var(--accent) !important; }
+.stButton > button[kind="primary"] { background:linear-gradient(135deg,#123C74,#2E77D0) !important; color:#fff !important; border:none !important; }
+.stButton > button[kind="primary"]:hover { color:#fff !important; opacity:.94; }
+
+/* --- category pills (navigation) --- */
+div[data-testid="stPills"] [data-testid="stHorizontalBlock"] { gap:8px; flex-wrap:wrap; }
+div[data-testid="stPills"] button {
+    border-radius:999px !important; border:1px solid var(--line) !important; background:#fff !important;
+    color:#42546E !important; font-weight:600 !important; font-size:13px !important; padding:2px 16px !important;
+}
+div[data-testid="stPills"] button[aria-pressed="true"] {
+    background:var(--accent) !important; border-color:var(--accent) !important; color:#fff !important;
+}
+
+/* --- section headers --- */
+.sec { margin: 20px 0 26px; }
+.sec-head { display:flex; align-items:baseline; gap:12px; border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:16px; }
+.sec-eyebrow { text-transform:uppercase; font-size:10.5px; letter-spacing:1.6px; color:var(--accent); font-weight:800; }
+.sec-head h2 { margin:0; font-size:21px; }
+.sec-sub { margin-left:auto; color:var(--muted); font-size:12px; }
+
+/* --- chips + meters --- */
+.chip { display:inline-flex; align-items:center; gap:6px; padding:2px 11px; border-radius:999px; font-size:10.5px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; white-space:nowrap; }
+.topic { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid var(--line); border-radius:999px; padding:3px 11px; font-size:12px; font-weight:600; color:var(--ink); }
+.topic b { color:var(--accent); font-weight:800; }
+mark { background:#DCECFF; color:#0B2E63; padding:0 3px; border-radius:3px; }
+.time { color:var(--muted); font-size:12px; white-space:nowrap; }
+.meter { height:6px; background:#E6EBF4; border-radius:99px; overflow:hidden; }
+.meter > span { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#123C74,#2E77D0); width:0; }
+.rel-badge { font-size:11.5px; font-weight:700; color:var(--accent); background:var(--blue-tint); padding:2px 9px; border-radius:7px; white-space:nowrap; }
+
+/* --- link buttons --- */
+.btn, .btn-ghost {
+    display:inline-flex; align-items:center; gap:7px; border-radius:9px; font-weight:600;
+    font-size:13px; text-decoration:none; padding:8px 15px; transition:all .15s ease;
+}
+.btn { background:var(--accent); color:#fff; }
+.btn:hover { background:var(--accent-deep); color:#fff; text-decoration:none; }
+.btn-ghost { border:1px solid #D9E1EC; background:#fff; color:var(--ink); }
+.btn-ghost:hover { border-color:var(--accent); color:var(--accent); text-decoration:none; }
+.txt-link { color:var(--accent); font-weight:700; text-decoration:none; font-size:13px; }
+.txt-link:hover { text-decoration:underline; }
+
+/* --- featured analysis --- */
+.featured { display:grid; grid-template-columns: 2.1fr 1fr; gap:18px; margin-bottom:8px; }
+.hero-card { background:#fff; border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+.hero-img { display:block; height:250px; width:100%; object-fit:cover; background:linear-gradient(135deg,#DCE7F8,#F4F8FF); }
+.hero-body { padding:18px 20px 20px; }
+.hero-body .eyebrow { text-transform:uppercase; letter-spacing:1.6px; color:var(--accent); font-weight:800; font-size:10.5px; margin-bottom:8px; }
+.hero-body h2 { font-size:26px; line-height:1.22; margin:8px 0 8px; }
+.hero-body h2 a { color:var(--ink); text-decoration:none; }
+.hero-body h2 a:hover { color:var(--accent); }
+.hero-body p { color:var(--body); font-size:14.5px; line-height:1.6; margin:0 0 14px; }
+.hero-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.hero-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.feat-side { display:flex; flex-direction:column; gap:12px; }
+.feat-mini { background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; display:flex; gap:12px; align-items:flex-start; }
+.feat-num { font-family:var(--serif); font-size:20px; font-weight:700; color:var(--accent); line-height:1; padding-top:3px; }
+.feat-mini h4 { margin:2px 0 6px; font-size:16px; line-height:1.3; }
+.feat-mini h4 a { color:var(--ink); text-decoration:none; }
+.feat-mini p { margin:0; color:var(--muted); font-size:12.5px; line-height:1.5; }
+
+/* --- insight cards grid --- */
+.card-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(258px, 1fr)); gap:18px; }
+.card { background:#fff; border:1px solid var(--line); border-radius:15px; overflow:hidden; display:flex; flex-direction:column; transition:transform .15s ease, box-shadow .15s ease; }
+.card:hover { transform:translateY(-3px); box-shadow:0 14px 30px -16px rgba(10,27,51,.25); border-color:#C9D6EA; }
+.card-img { display:block; height:150px; width:100%; object-fit:cover; background:linear-gradient(135deg,#E3EDFB,#F6F9FE); }
+.card-ph { display:flex; align-items:center; justify-content:center; height:150px; font-size:34px; }
+.card-body { padding:14px 16px 15px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.card-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.card-title { font-size:16.5px; line-height:1.32; margin:0; }
+.card-title a { color:var(--ink); text-decoration:none; }
+.card-title a:hover { color:var(--accent); }
+.card-desc { color:var(--muted); font-size:12.5px; line-height:1.55; margin:0;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.card-meta { margin-top:auto; padding-top:6px; border-top:1px dashed var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.card-src { font-size:12px; font-weight:600; color:var(--body); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* --- intelligence rail (right sidebar) --- */
+.rail { display:flex; flex-direction:column; gap:18px; }
+.rail-block { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 18px; }
+.rail-title { text-transform:uppercase; font-size:10.5px; letter-spacing:1.6px; color:var(--accent); font-weight:800; margin-bottom:12px; }
+.rank-num { font-family:var(--serif); font-size:44px; font-weight:800; color:var(--ink); line-height:.9; letter-spacing:-1px; }
+.rail-block h3 { font-size:17px; line-height:1.3; margin:4px 0 8px; }
+.rail-block h3 a { color:var(--ink); text-decoration:none; }
+.rail-block h3 a:hover { color:var(--accent); }
+.rail-meta { color:var(--muted); font-size:12px; margin:0 0 11px; }
+.pulse-row { display:flex; align-items:center; gap:10px; margin:9px 0; }
+.pulse-label { width:112px; font-size:12px; font-weight:700; color:var(--body); text-transform:capitalize; }
+.pulse-meter { flex:1; }
+.pulse-count { font-size:12px; font-weight:800; color:var(--ink); width:22px; text-align:right; }
+.pulse-footer { margin-top:12px; padding-top:11px; border-top:1px solid var(--line); display:flex; justify-content:space-between; color:var(--muted); font-size:11.5px; }
+.filter-chip { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--line); padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; color:var(--ink); margin:0 6px 8px 0; }
+.filter-chip b { color:var(--muted); font-weight:600; }
+.footer-note { color:var(--muted); font-size:11.5px; margin-top:8px; border-top:1px solid var(--line); padding-top:10px; }
+
+/* --- search results --- */
+.res-row { display:flex; gap:16px; padding:16px 2px; border-bottom:1px solid var(--line); }
+.res-rank { font-family:var(--serif); font-size:22px; font-weight:800; color:#C3CFE0; min-width:34px; padding-top:2px; }
+.res-main { flex:1; min-width:0; }
+.res-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:7px; }
+.res-meta { color:var(--muted); font-size:12px; }
+.res-main h3 { font-size:19px; line-height:1.3; margin:0 0 6px; }
+.res-main h3 a { color:var(--ink); text-decoration:none; }
+.res-main h3 a:hover { color:var(--accent); }
+.res-snip { color:var(--body); font-size:13.5px; line-height:1.6; margin:0 0 9px; }
+.res-actions { display:flex; gap:16px; align-items:center; }
+
+/* --- article detail --- */
+.breadcrumb { color:var(--muted); font-size:12.5px; margin-bottom:14px; }
+.breadcrumb a { color:var(--accent); text-decoration:none; font-weight:600; }
+.art-chip-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.art-title { font-size:36px; line-height:1.18; margin:0 0 14px; }
+.art-standfirst { font-size:17px; line-height:1.65; color:var(--body); font-family:var(--serif); font-style:italic; margin:0 0 16px; }
+.art-meta { display:flex; align-items:center; gap:14px; flex-wrap:wrap; color:var(--muted); font-size:13px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:10px 0; margin-bottom:18px; }
+.art-img { width:100%; border-radius:14px; border:1px solid var(--line); margin-bottom:18px; }
+.art-body p { font-size:15.5px; line-height:1.75; color:var(--ink); margin:0 0 14px; }
+.topics-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.related-item { padding:11px 0; border-top:1px dashed var(--line); }
+.related-item:first-of-type { border-top:0; padding-top:0; }
+.related-item h4 { margin:0 0 4px; font-size:14.5px; line-height:1.35; }
+.related-item h4 a { color:var(--ink); text-decoration:none; }
+.related-item h4 a:hover { color:var(--accent); }
+.dl { display:flex; justify-content:space-between; gap:12px; font-size:12.5px; padding:7px 0; border-top:1px dashed var(--line); }
+.dl:first-of-type { border-top:0; }
+.dl dt { color:var(--muted); font-weight:600; text-transform:uppercase; font-size:10.5px; letter-spacing:.6px; padding-top:2px; }
+.dl dd { margin:0; color:var(--ink); font-weight:600; text-align:right; }
+
+/* --- empty state --- */
+.empty { background:var(--panel); border:1px dashed #C9D6EA; border-radius:16px; padding:30px 26px; text-align:center; }
+.empty h3 { margin:0 0 6px; font-size:19px; }
+.empty p { color:var(--muted); margin:0 0 14px; font-size:13.5px; }
+
+/* --- responsive --- */
+@media (max-width: 960px) {
+    .featured { grid-template-columns: 1fr; }
+}
+</style>
+"""
+
+
+# ---------------------------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------------------------
+
+def esc(value):
+    """HTML-escape arbitrary text before injecting it into HTML layouts."""
+    return html.escape(str(value), quote=True)
+
+
+def rel_time(iso):
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except Exception:
+        return str(iso)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    seconds = max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{seconds // 60}m ago"
+    if seconds < 86400:
+        return f"{seconds // 3600}h ago"
+    if seconds < 86400 * 7:
+        return f"{seconds // 86400}d ago"
+    return dt.strftime("%b %d, %Y")
+
+
+def fmt_date(iso):
+    if not iso:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except Exception:
+        return str(iso)
+    return dt.strftime("%A, %d %B %Y · %H:%M UTC")
+
+
+def snippet(text, length=150):
+    text = (text or "").strip()
+    return text if len(text) <= length else text[:length].rsplit(" ", 1)[0] + "…"
+
+
+def highlight_matches(text, tokens):
+    """Escape text then wrap query tokens in <mark>.</mark>"""
+    safe = esc(text or "")
+    terms = [esc(t) for t in tokens if len(t) >= 2]
+    if not terms:
+        return safe
+    pattern = re.compile("(" + "|".join(map(re.escape, terms)) + ")", re.IGNORECASE)
+    return pattern.sub(lambda m: f"<mark>{m.group(1)}</mark>", safe)
+
+
+def cat_chip(key, with_emoji=False):
+    meta = CATEGORY_META.get(key, {"label": key, "color": "#1B5DC9", "tint": "#EAF1FE", "emoji": "•"})
+    label = meta["label"]
+    if with_emoji:
+        label = f"{meta['emoji']} {label}"
+    return (f'<span class="chip" style="color:{meta["color"]};background:{meta["tint"]}">'
+            f'{esc(label)}</span>')
+
+
+def relevance_meter(score):
+    score = max(0, min(100, int(score)))
+    return (f'<span class="rel-badge">{score}/100</span>'
+            f'<div class="meter" style="margin-top:6px"><span style="width:{score}%"></span></div>')
+
+
+STOPWORDS = set(
+    "a an the and or but if then else when while for with without from by at in on over under of to into "
+    "as is are was were be been being has have had do does did not no nor so too very just can could will "
+    "would shall should may might must all any both each few more most other some such only own same than "
+    "that this these those it its their they them he she we you our your his her there here what which who "
+    "whom how why where out about after before against between during through among because since until "
+    "unless new news said says say bank banking banks financial finance global audit audits auditor "
+    "regulatory regulation risk risks governance".split()
+)
+
+
+def trending_topics(rows, n=8):
+    counter = Counter()
+    for article in rows:
+        text = f"{article.get('title','')} {article.get('description','')}".lower()
+        for word in re.findall(r"[a-z][a-z0-9&+.\-]{2,}", text):
+            if word in STOPWORDS or word.isdigit():
+                continue
+            counter[word] += 1
+    return counter.most_common(n)
+
+
+def search_tokens(query):
+    return [t.lower() for t in re.findall(r"\w+", query or "")][:6]
+
+
+def matches_query(article, tokens):
+    if not tokens:
+        return True
+    haystack = " ".join([
+        article.get("title", ""),
+        article.get("description", ""),
+        article.get("source", ""),
+        article.get("category", ""),
+        article.get("body", ""),
+    ]).lower()
+    return all(tok in haystack for tok in tokens)
+
+
+def secure_image(url):
+    if not url:
+        return ""
+    return str(url).replace("http://", "https://")
+
+
+# ---------------------------------------------------------------------------
+# NEWS PIPELINE (unchanged behavior)
+# ---------------------------------------------------------------------------
 
 def get_api_key():
-    """Use Streamlit secrets/env first; the in-page form is the fallback."""
+    """Use Streamlit secrets/env first; sidebar entry is the local fallback."""
     if CONFIG_API_KEY.strip():
         return CONFIG_API_KEY.strip()
 
@@ -375,7 +426,7 @@ def get_api_key():
         return env_key
 
     try:
-        secret_key = st.secrets.get("API_KEY", "") or st.secrets.get("NEWSAPI_KEY", "")
+        secret_key = st.secrets.get("API_KEY", "")
         if secret_key:
             return str(secret_key).strip()
     except Exception:
@@ -394,17 +445,16 @@ def normalize_text(article):
 
 
 def audit_relevance(text):
-    """Simple, transparent audit relevance score."""
+    """Simple, fast, transparent audit relevance score: 0-100."""
     score = 0
     for term in AUDIT_TERMS:
         if term in text:
             score += 5
 
-    # Stronger signals get additional weight
     for term in [
         "internal audit", "audit committee", "internal controls",
-        "control deficiency", "regulatory enforcement",
-        "model risk", "financial crime",
+        "control deficiency", "regulatory enforcement", "it audit",
+        "technology risk", "financial crime",
     ]:
         if term in text:
             score += 10
@@ -413,15 +463,12 @@ def audit_relevance(text):
 
 
 def classify_article(article):
-    """Classify using transparent keyword scoring."""
+    """Classify using transparent keyword scoring; no paid LLM is required."""
     text = normalize_text(article)
     scores = {}
 
     for category, terms in CATEGORY_TERMS.items():
-        score = 0
-        for term in terms:
-            if term in text:
-                score += 1
+        score = sum(1 for term in terms if term in text)
         scores[category] = score
 
     best_category = max(scores, key=scores.get)
@@ -461,8 +508,8 @@ def fetch_category(category, query, api_key, from_date, page_size):
 @st.cache_data(ttl=300, show_spinner=False)
 def load_news(api_key, lookback_days, page_size):
     """
-    Fetch all targeted banking searches in parallel.
-    Cached for 5 minutes.
+    Fetch all five targeted searches in parallel.
+    Cached for 5 minutes so Streamlit reruns do not repeatedly call NewsAPI.
     """
     from_date = (
         datetime.now(timezone.utc) - timedelta(days=lookback_days)
@@ -491,7 +538,7 @@ def load_news(api_key, lookback_days, page_size):
             except Exception as exc:
                 errors.append(f"{category}: {exc}")
 
-    # Deduplicate by URL first, then by normalized title
+    # Deduplicate by URL first, then by normalized title.
     unique = {}
     title_keys = set()
 
@@ -511,14 +558,14 @@ def load_news(api_key, lookback_days, page_size):
         text = normalize_text(article)
         relevance = audit_relevance(text)
 
-        # Only retain stories with a meaningful audit/risk/control signal
+        # Internal floor — only meaningful audit/risk/control signals are kept.
         if relevance < 5:
             continue
 
         category, category_score = classify_article(article)
 
         source = article.get("source") or {}
-        published = article.get("publishedAt") or ""
+        body = re.sub(r"\s*\[\+\d+ chars\]$", "", article.get("content") or "")
 
         cleaned.append({
             "category": category,
@@ -526,372 +573,591 @@ def load_news(api_key, lookback_days, page_size):
             "category_score": category_score,
             "title": article.get("title") or "Untitled",
             "description": article.get("description") or "",
-            "source": source.get("name") or "Institutional Source",
-            "publishedAt": published,
+            "body": body,
+            "source": source.get("name") or "Unknown source",
+            "publishedAt": article.get("publishedAt") or "",
             "url": article.get("url") or "",
+            "image": secure_image(article.get("urlToImage") or ""),
             "author": article.get("author") or "",
-            "image_url": article.get("urlToImage") or "",
         })
 
     cleaned.sort(key=lambda x: (x["audit_relevance"], x["publishedAt"]), reverse=True)
     return cleaned, errors
 
 
-def format_relative_time(pub_date_str):
-    """Formats relative date nicely (e.g. '3 days ago', '1 week ago')."""
-    if not pub_date_str:
-        return "Recent"
-    try:
-        clean_str = pub_date_str.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(clean_str)
-        now = datetime.now(timezone.utc)
-        diff = now - dt
-        days = diff.days
-        if days == 0:
-            return "Today"
-        elif days == 1:
-            return "1 day ago"
-        elif days < 7:
-            return f"{days} days ago"
-        elif days < 14:
-            return "1 week ago"
-        else:
-            return f"{days // 7} weeks ago"
-    except Exception:
-        return pub_date_str[:10] if len(pub_date_str) >= 10 else "Recent"
+# ---------------------------------------------------------------------------
+# RENDER BUILDERS
+# ---------------------------------------------------------------------------
+
+def article_link(idx):
+    return f"?view=article&idx={idx}"
 
 
-def format_topic_label(term):
-    """Title-case a keyword for display, keeping known acronyms uppercase."""
-    words = term.split()
-    out = []
-    for w in words:
-        out.append(w.upper() if w in _ACRONYMS else w.capitalize())
-    return " ".join(out)
+def card_html(article, idx):
+    meta = CATEGORY_META.get(article["category"])
+    color = meta["color"] if meta else "#1B5DC9"
+    tint = meta["tint"] if meta else "#EAF1FE"
+    emoji = meta["emoji"] if meta else "📰"
 
+    img = article.get("image") or ""
+    if img:
+        visual = (f'<a class="card-img-wrap" href="{article_link(idx)}">'
+                  f'<img class="card-img" src="{esc(img)}" alt="{esc(article["title"])}" loading="lazy" '
+                  f'onerror="this.style.display=\'none\'"></a>')
+    else:
+        visual = (f'<div class="card-ph" style="background:linear-gradient(135deg,{tint},{color}22)">'
+                  f'<span style="font-size:32px">{emoji}</span></div>')
 
-def compute_trending_topics(rows, top_n=4):
-    """Real term-frequency count across the current feed — not fabricated data."""
-    all_terms = set()
-    for terms in CATEGORY_TERMS.values():
-        all_terms.update(terms)
-
-    counter = Counter()
-    for row in rows:
-        text = f'{row["title"]} {row["description"]}'.lower()
-        for term in all_terms:
-            if term in text:
-                counter[term] += 1
-
-    return [(format_topic_label(term), count) for term, count in counter.most_common(top_n) if count > 0]
-
-
-# ---------------------------------------------------------
-# 4. TOP NAVIGATION
-# ---------------------------------------------------------
-
-st.markdown("""
-<div class="topnav">
-    <div class="topnav-left">
-        <div class="logo-icon">🛡</div>
-        <div class="logo-text">Audit Intel</div>
-    </div>
-    <div class="topnav-right">
-        <span>Dashboard</span>
-        <span>Saved</span>
-        <span>Explore ▾</span>
-        <span>🔔</span>
-        <div class="avatar-circle-sm">A</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------
-# 5. DATA CONTROLS (collapsed "Advanced Filters" panel)
-# ---------------------------------------------------------
-
-api_key = get_api_key()
-
-with st.expander("⚙️  Advanced Filters & Data Controls", expanded=(not api_key)):
-    if not api_key:
-        api_key = st.text_input(
-            "NewsAPI Key",
-            type="password",
-            placeholder="Enter API key...",
-            help="Configurable via secrets.toml or config.py for a persistent setup.",
-        )
-
-    c1, c2 = st.columns(2)
-    with c1:
-        lookback_days = st.slider("Lookback Window (Days)", min_value=1, max_value=7, value=3)
-    with c2:
-        page_size = st.slider("Stories Per Category", min_value=10, max_value=100, value=50, step=10)
-
-    selected_categories = st.multiselect(
-        "Active Categories",
-        options=list(CATEGORIES.keys()),
-        default=list(CATEGORIES.keys()),
-        format_func=lambda c: CATEGORY_DISPLAY.get(c, c),
+    return (
+        f'<article class="card">'
+        f'{visual}'
+        f'<div class="card-body">'
+        f'<div class="card-top">{cat_chip(article["category"])}'
+        f'<span class="time">{rel_time(article["publishedAt"])}</span></div>'
+        f'<h3 class="card-title"><a href="{article_link(idx)}">{esc(article["title"])}</a></h3>'
+        f'<p class="card-desc">{esc(snippet(article["description"], 150))}</p>'
+        f'<div class="card-meta"><span class="card-src">● {esc(article["source"])}</span>'
+        f'<span class="rel-badge">{article["audit_relevance"]}/100</span></div>'
+        f'</div></article>'
     )
 
-    refresh = st.button("⟲  Update Briefing")
+
+def rail_block(title, inner_html, extra_class=""):
+    return (f'<div class="rail-block {extra_class}">'
+            f'<div class="rail-title">{title}</div>{inner_html}</div>')
+
+
+def pulse_block(articles):
+    counts = Counter(a["category"] for a in articles)
+    total = max(1, len(articles))
+    rows = ""
+    for key, meta in CATEGORY_META.items():
+        count = counts.get(key, 0)
+        pct = int(round(count / total * 100))
+        rows += (
+            f'<div class="pulse-row"><span class="pulse-label">{meta["label"]}</span>'
+            f'<div class="pulse-meter"><div class="meter"><span style="width:{pct}%;'
+            f'background:linear-gradient(90deg,{meta["color"]}cc,{meta["color"]})"></span></div></div>'
+            f'<span class="pulse-count">{count}</span></div>'
+        )
+    updated = datetime.now(timezone.utc).strftime("%H:%M UTC")
+    return rail_block(
+        "Market Pulse",
+        rows + f'<div class="pulse-footer"><span>Total stories</span><b>{len(articles)}</b></div>'
+               f'<div class="pulse-footer"><span>Updated</span><b>{updated}</b></div>',
+    )
+
+
+def active_filters_block(cat_label, lookback, depth, query):
+    chips = (
+        f'<span class="filter-chip">Category <b>{esc(cat_label or "All topics")}</b></span>'
+        f'<span class="filter-chip">Lookback <b>{lookback}d</b></span>'
+        f'<span class="filter-chip">Depth <b>{depth}/cat</b></span>'
+    )
+    if query:
+        chips += f'<span class="filter-chip">Query <b>“{esc(query)}”</b></span>'
+    return rail_block("Active Filters", chips)
+
+
+def leader_block(articles):
+    if not articles:
+        return rail_block("Daily Leader", '<p class="rail-meta">Awaiting stories…</p>')
+    top = articles[0]
+    idx = articles.index(top)
+    return rail_block(
+        "Daily Leader",
+        f'<div class="rank-num">01</div>'
+        f'{cat_chip(top["category"], with_emoji=True)}'
+        f'<h3 style="margin-top:8px"><a href="{article_link(idx)}">{esc(top["title"])}</a></h3>'
+        f'<p class="rail-meta">{esc(top["source"])} · {rel_time(top["publishedAt"])}</p>'
+        f'{relevance_meter(top["audit_relevance"])}'
+        f'<p style="margin:12px 0 0"><a class="btn" style="width:100%;justify-content:center" '
+        f'href="{article_link(idx)}">Open story</a></p>',
+    )
+
+
+def trending_block(articles):
+    topics = trending_topics(articles, 8)
+    if not topics:
+        return rail_block("Trending Topics", '<p class="rail-meta">No signals yet.</p>')
+    chips = "".join(
+        f'<span class="topic" style="margin:0 6px 8px 0">{esc(t)} <b>{c}</b></span>'
+        for t, c in topics
+    )
+    return rail_block("Trending Topics", chips)
+
+
+# ---------------------------------------------------------------------------
+# SMART STATE ADAPTERS
+# ---------------------------------------------------------------------------
+
+def resolve_view(articles):
+    """Resolve current UI view from query params / session state."""
+    view = (st.query_params.get_all("view") or [None])[0]
+    if view == "article":
+        try:
+            idx = int(st.query_params.get_all("idx")[0])
+        except (ValueError, IndexError, TypeError):
+            idx = -1
+        if 0 <= idx < len(articles):
+            return "article", idx
+        return "home", None
+    query = (st.session_state.get("news_search") or "").strip()
+    if query:
+        return "search", None
+    return "home", None
+
+
+def current_rows(articles, picked_category, query=""):
+    """Apply category + search filtering (audit-relevance threshold stays internal)."""
+    if picked_category and picked_category != "All topics":
+        keys = [k for k, m in CATEGORY_META.items() if m["label"] == picked_category]
+    else:
+        keys = list(CATEGORIES.keys())
+    tokens = search_tokens(query)
+    rows = [a for a in articles if a["category"] in keys and matches_query(a, tokens)]
+    return rows, tokens
+
+
+def csv_bytes(rows):
+    df = pd.DataFrame(rows)[[
+        "category", "title", "source", "description", "url",
+        "author", "publishedAt", "audit_relevance", "category_score",
+    ]]
+    return df.to_csv(index=False).encode("utf-8")
+
+
+# ---------------------------------------------------------------------------
+# STREAMLIT APP
+# ---------------------------------------------------------------------------
+
+st.markdown(APP_CSS, unsafe_allow_html=True)
+
+st.session_state.setdefault("news_search", "")
+st.session_state.setdefault("cat_pill", "All topics")
+
+# ---------- API key ----------
+api_key = get_api_key()
 
 if not api_key:
-    st.info("💡 Please enter your NewsAPI key above (or configure API_KEY in Streamlit secrets) to load the briefing.")
-    st.stop()
+    with st.sidebar:
+        st.markdown('<div class="brand-name" style="font-size:16px">🏦 Audit Intel</div>')
+        st.caption("Global Banking Audit Intelligence")
+        api_key = st.text_input(
+            "NewsAPI key", type="password",
+            help="Your key is used only for this Streamlit session.",
+        )
+    if not api_key:
+        st.markdown(
+            '<div class="empty"><h3>API key required</h3>'
+            '<p>Set <code>NEWSAPI_KEY</code> as an environment variable, add '
+            '<code>API_KEY</code> to Streamlit secrets, or enter your key in the sidebar.</p></div>',
+            unsafe_allow_html=True,
+        )
+        st.stop()
 
+# ---------- Sidebar: feed settings + diagnostics ----------
+with st.sidebar:
+    st.markdown('<div class="brand-name" style="font-size:16px">🏦 Audit Intel</div>')
+    st.caption("Global Banking · Audit · Intelligence")
 
-# ---------------------------------------------------------
-# 6. DATA INGESTION & FILTERING
-# ---------------------------------------------------------
+    with st.expander("⚙️ Feed settings", expanded=True):
+        lookback_days = st.slider("Look back (days)", min_value=1, max_value=7, value=3)
+        page_size = st.slider(
+            "Ingestion depth (articles per category)",
+            min_value=10, max_value=100, value=50, step=10,
+        )
+        if st.button("🔄 Fetch latest news", type="primary", use_container_width=True):
+            st.session_state["refresh_requested"] = True
 
-if refresh or "news_loaded" not in st.session_state:
-    with st.spinner("Compiling this week's audit intelligence briefing..."):
+    if api_key:
+        try:
+            articles, errors = None, []
+            # populate diagnostics after load below
+        except Exception:
+            pass
+
+    st.markdown(
+        '<div class="footer-note">Powered by NewsAPI · Run with <code>streamlit run main.py</code> '
+        '<br/>Audit relevance & classification are transparent keyword rules — no LLM required.</div>',
+        unsafe_allow_html=True,
+    )
+
+# ---------- Load news (unchanged trigger behavior) ----------
+refresh_requested = st.session_state.pop("refresh_requested", False)
+
+if refresh_requested or "news_loaded" not in st.session_state:
+    with st.spinner("Fetching targeted global audit news…"):
         articles, errors = load_news(api_key, lookback_days, page_size)
-
     st.session_state.news = articles
     st.session_state.news_errors = errors
     st.session_state.news_loaded = True
+    st.session_state.load_lookback = lookback_days
+    st.session_state.load_depth = page_size
 
 articles = st.session_state.get("news", [])
 errors = st.session_state.get("news_errors", [])
+lookback_days = st.session_state.get("load_lookback", lookback_days)
+page_size = st.session_state.get("load_depth", page_size)
 
-if selected_categories:
-    filtered = [a for a in articles if a["category"] in selected_categories]
-else:
-    filtered = []
+# ---------- Top navigation bar ----------
+now_str = datetime.now(timezone.utc).strftime("%H:%M UTC")
 
-if errors:
-    with st.expander("Feed Diagnostic Notices", expanded=False):
-        for err in errors:
-            st.markdown(f"<div style='font-size: 12px; color: #B45309;'>• {err}</div>", unsafe_allow_html=True)
+header_html = f"""
+<div class="audit-topbar">
+  <div><div class="brand-mark">AI</div></div>
+  <div>
+    <div class="brand-name">Audit Intel</div>
+    <div class="brand-sub">Banking · Audit · Intelligence</div>
+  </div>
+</div>
+"""
+brand_col, search_col, action_col = st.columns([1.35, 3.4, 2.05], vertical_alignment="center")
 
+with brand_col:
+    st.markdown(header_html, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 7. SEARCH BAR
-# ---------------------------------------------------------
+with search_col:
+    st.text_input(
+        "Global search",
+        key="news_search",
+        value=st.session_state.get("news_search", ""),
+        placeholder="Search stories, banks, regulators, topics…",
+        icon=":material/search:",
+        label_visibility="collapsed",
+    )
 
-st.markdown('<div class="page-title">This week\'s briefing</div>', unsafe_allow_html=True)
-st.markdown(
-    f'<div class="page-subtitle">{len(filtered)} items &nbsp;·&nbsp; verified banking internal controls & regulatory surveillance</div>',
-    unsafe_allow_html=True,
-)
+with action_col:
+    st.markdown(
+        f'<div class="live-line"><span class="live-dot"></span>Live feed&nbsp;·&nbsp;Updated {now_str}</div>',
+        unsafe_allow_html=True,
+    )
+    b1, b2 = st.columns([1.15, 1])
+    with b1:
+        st.download_button(
+            "📥 CSV",
+            data=lambda: csv_bytes(current_rows(articles, st.session_state.get("cat_pill", "All topics"))[0]),
+            file_name=f"audit-intel-{datetime.now().strftime('%Y-%m-%d')}.csv",
+            mime="text/csv",
+        )
+    with b2:
+        if st.button("🔄 Refresh", use_container_width=True):
+            st.session_state["refresh_requested"] = True
 
-search_query = st.text_input(
-    "Search",
-    placeholder="🔍  Search news, regulations, and insights...",
+st.markdown('<div style="border-bottom:1px solid var(--line)"></div>', unsafe_allow_html=True)
+
+# ---------- Category navigation (pills) ----------
+count_labels = Counter(a["category"] for a in articles)
+pill_options = ["All topics"] + [CATEGORY_META[k]["label"] for k in CATEGORIES]
+
+st.pills(
+    "Browse topics",
+    options=pill_options,
+    key="cat_pill",
+    default="All topics",
+    selection_mode="single",
     label_visibility="collapsed",
 )
 
-if search_query:
-    sq = search_query.lower()
-    filtered = [
-        a for a in filtered
-        if sq in a["title"].lower() or sq in a["description"].lower() or sq in a["source"].lower()
-    ]
+count_chips = "".join(
+    f'<span class="chip" style="color:{m["color"]};background:{m["tint"]};">{m["emoji"]} {m["label"]}&nbsp;·&nbsp;{count_labels.get(k, 0)}</span> '
+    for k, m in CATEGORY_META.items()
+)
+st.markdown(
+    f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px">{count_chips}'
+    f'<span class="chip" style="color:#42546E;background:#EEF2F8;">Σ {len(articles)} stories</span></div>',
+    unsafe_allow_html=True,
+)
+
+# ---------- Resolve view ----------
+view, article_idx = resolve_view(articles)
+query = (st.session_state.get("news_search") or "").strip()
+picked_category = st.session_state.get("cat_pill", "All topics")
+filtered, tokens = current_rows(articles, picked_category, query)
 
 
-# ---------------------------------------------------------
-# 8. RENDER HELPERS — hero card + insight cards
-# ---------------------------------------------------------
+# ===========================================================================
+# VIEW: ARTICLE DETAIL  (page 2 of the Visily reference)
+# ===========================================================================
+if view == "article" and article_idx is not None and 0 <= article_idx < len(articles):
+    article = articles[article_idx]
+    back_href = f"?view=search&q={quote(query)}" if query else "?view=home"
 
-def render_featured(article):
-    color = CATEGORY_COLORS.get(article["category"], "#374151")
-    label = CATEGORY_DISPLAY.get(article["category"], article["category"])
-    rel_time = format_relative_time(article["publishedAt"])
+    mains, rails = st.columns([2.35, 1.15], gap="large")
 
-    if article["image_url"]:
-        bg = f'linear-gradient(180deg, rgba(17,24,39,0) 35%, rgba(17,24,39,0.88) 100%), url(\'{article["image_url"]}\')'
-    else:
-        bg = 'linear-gradient(135deg, #1E3A8A, #2563EB)'
+    with mains:
+        st.markdown(
+            f'<div class="breadcrumb"><a href="{back_href}">← Back to feed</a>  /  '
+            f'{cat_chip(article["category"])}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="art-chip-row">'
+            f'{cat_chip(article["category"], with_emoji=True)}'
+            f'<span class="rel-badge">{article["audit_relevance"]}/100 audit relevance</span>'
+            f'<span class="time">{fmt_date(article["publishedAt"])}</span></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(f'<h1 class="art-title">{esc(article["title"])}</h1>', unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div class="featured-hero" style="background-image: {bg};">
-        <div class="featured-badge" style="background: {color};">{label}</div>
-        <div class="featured-text">
-            <div class="featured-title">{article['title']}</div>
-            <div class="featured-meta">By {article['source']} &nbsp;·&nbsp; {rel_time}</div>
-        </div>
-        <a href="{article['url']}" target="_blank" class="featured-link-overlay"></a>
-    </div>
-    """, unsafe_allow_html=True)
+        if article.get("description"):
+            st.markdown(f'<p class="art-standfirst">{esc(article["description"])}</p>', unsafe_allow_html=True)
+
+        st.markdown(
+            f'<div class="art-meta"><span>🏛 {esc(article["source"])}</span>'
+            f'<span>✍️ {esc(article["author"] or "NewsAPI wire")}</span>'
+            f'<span>⏱ {rel_time(article["publishedAt"])}</span></div>',
+            unsafe_allow_html=True,
+        )
+
+        if article.get("image"):
+            st.markdown(
+                f'<img class="art-img" src="{esc(article["image"])}" '
+                f'onerror="this.parentElement.remove()" alt="{esc(article["title"])}" loading="lazy">',
+                unsafe_allow_html=True,
+            )
+
+        body = (article.get("body") or "").strip()
+        if body:
+            sentences = re.split(r"(?<=[.!?])\s+", body)
+            paragraphs = "".join(
+                f"<p>{esc(' '.join(sentences[i:i+3]))}</p>"
+                for i in range(0, min(len(sentences), 24), 3)
+            )
+            st.markdown(f'<div class="art-body">{paragraphs}'
+                        f'<p style="color:var(--muted);font-size:12.5px">Excerpt provided by NewsAPI; '
+                        f'some trailing text may be truncated.</p></div>', unsafe_allow_html=True)
+        else:
+            st.markdown(
+                f'<div class="art-body"><p>{esc(article.get("description") or "No extended summary is available.")}</p>'
+                f'<p style="color:var(--muted);font-size:12.5px">Full text is behind the source-link paywall/article.</p>'
+                f'</div>', unsafe_allow_html=True,
+            )
+
+        # Key topics detected by the classifier
+        detected = [
+            term for term in CATEGORY_TERMS.get(article["category"], [])
+            if term in f"{article['title']} {article['description']} {body}".lower()
+        ][:8]
+        if detected:
+            st.markdown(
+                '<div class="sec-head"><span class="sec-eyebrow">Key Topics</span>'
+                '<h2 style="font-size:15px">Signals detected</h2></div>'
+                + '<div class="topics-row">'
+                + "".join(f'<span class="topic">#{esc(t.replace(" ", "-"))}</span>' for t in detected)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            f'<div class="hero-actions" style="margin-top:18px">'
+            f'<a class="btn" href="{esc(article["url"])}" target="_blank" rel="noopener noreferrer">'
+            f'Read full article ↗</a>'
+            f'<a class="btn-ghost" href="{back_href}">← Back to feed</a></div>',
+            unsafe_allow_html=True,
+        )
+
+    with rails:
+        # Story intelligence panel
+        domain = ""
+        try:
+            domain = urlparse(article["url"]).netloc
+        except Exception:
+            pass
+        story_meta = (
+            f'<dl class="dl"><dt>Category</dt><dd>{esc(CATEGORY_META.get(article["category"], {}).get("label", article["category"]))}</dd></dl>'
+            f'<dl class="dl"><dt>Source</dt><dd>{esc(article["source"])}</dd></dl>'
+            f'<dl class="dl"><dt>Domain</dt><dd>{esc(domain or "—")}</dd></dl>'
+            f'<dl class="dl"><dt>Published</dt><dd>{rel_time(article["publishedAt"])}</dd></dl>'
+            f'<dl class="dl"><dt>Feed rank</dt><dd>#{article_idx + 1}</dd></dl>'
+            f'<dl class="dl"><dt>Audit relevance</dt><dd>{article["audit_relevance"]}/100</dd></dl>'
+            f'<dl class="dl"><dt>Topic signals</dt><dd>{article["category_score"]}</dd></dl>'
+        )
+        st.markdown(rail_block("Story Intelligence", story_meta), unsafe_allow_html=True)
+
+        # Related stories
+        related = [a for a in articles if a["category"] == article["category"] and a is not article][:5]
+        if not related:
+            related = [a for a in articles if a is not article][:5]
+        related_html = "".join(
+            f'<div class="related-item">{cat_chip(a["category"])}'
+            f'<h4><a href="{article_link(articles.index(a))}">{esc(snippet(a["title"], 90))}</a></h4>'
+            f'<span class="time">{esc(a["source"])} · {rel_time(a["publishedAt"])}</span></div>'
+            for a in related
+        )
+        st.markdown(rail_block("Related Stories", related_html or '<p class="rail-meta">None yet.</p>'),
+                    unsafe_allow_html=True)
+
+        st.markdown(pulse_block(articles), unsafe_allow_html=True)
+
+    st.stop()
 
 
-def render_insight_card(article):
-    color = CATEGORY_COLORS.get(article["category"], "#374151")
-    label = CATEGORY_DISPLAY.get(article["category"], article["category"])
-    rel_time = format_relative_time(article["publishedAt"])
-    description_text = article["description"] or "Independent institutional briefing coverage. Select below to review the full verified source documentation."
+# ===========================================================================
+# VIEW: SEARCH RESULTS  (page 3 of the Visily reference)
+# ===========================================================================
+if view == "search":
+    st.markdown(
+        '<div class="sec-head"><span class="sec-eyebrow">Search</span>'
+        f'<h2 style="color:var(--ink)">Results for “{esc(query)}”</h2>'
+        f'<span class="sec-sub">{len(filtered)} story{"s" if len(filtered) != 1 else ""} found '
+        f'(in {esc(picked_category or "All topics")})</span></div>',
+        unsafe_allow_html=True,
+    )
 
-    if article["image_url"]:
-        thumb_html = f'<div class="insight-thumb" style="background-image: url(\'{article["image_url"]}\');"></div>'
-    else:
-        thumb_html = '<div class="insight-thumb insight-thumb-empty">📰</div>'
-
-    st.markdown(f"""
-    <div class="insight-card">
-        {thumb_html}
-        <div class="insight-content">
-            <div class="insight-meta-row">
-                <span class="badge" style="background: {color};">{label}</span>
-                <span class="insight-date">{rel_time}</span>
-            </div>
-            <a href="{article['url']}" target="_blank" class="insight-title-link">
-                <div class="insight-title">{article['title']}</div>
-            </a>
-            <div class="insight-desc">{description_text}</div>
-            <div class="insight-footer">
-                <span class="score-chip">AUDIT SCORE {article['audit_relevance']}/100</span>
-                <a href="{article['url']}" target="_blank" class="read-link">Read source ↗</a>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def render_feed(rows, show_featured=True):
-    if not rows:
-        st.markdown("""
-        <div class="empty-state-panel">
-            <div style="font-size: 18px; font-weight: 700; color: #111827;">No briefing stories found</div>
-            <div style="font-size: 13.5px; color: #6B7280; margin-top: 6px;">Try expanding the lookback window or broadening the search above.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        return
-
-    if show_featured:
-        st.markdown('<div class="section-heading">Featured Analysis</div>', unsafe_allow_html=True)
-        render_featured(rows[0])
-        rest = rows[1:]
-    else:
-        rest = rows
-
-    if rest:
-        st.markdown('<div class="section-heading">Latest Insights</div>', unsafe_allow_html=True)
-        for art in rest:
-            render_insight_card(art)
-
-
-# ---------------------------------------------------------
-# 9. MAIN LAYOUT — feed (left) + intelligence sidebar (right)
-# ---------------------------------------------------------
-
-col_main, col_side = st.columns([2.3, 1], gap="large")
-
-with col_main:
     if not filtered:
-        render_feed(filtered)
-    else:
-        tab_labels = ["All Insights"] + [CATEGORY_DISPLAY.get(c, c) for c in selected_categories]
-        tabs = st.tabs(tab_labels)
-
-        with tabs[0]:
-            render_feed(filtered, show_featured=True)
-
-        for tab, category in zip(tabs[1:], selected_categories):
-            with tab:
-                cat_rows = [a for a in filtered if a["category"] == category]
-                render_feed(cat_rows, show_featured=False)
-
-with col_side:
-    # --- Top Source (real data — replaces a fabricated "daily leader" bio) ---
-    if filtered:
-        source_counts = Counter(a["source"] for a in filtered)
-        top_source, top_count = source_counts.most_common(1)[0]
-        initial = top_source[:1].upper() if top_source else "?"
-        st.markdown(f"""
-        <div class="side-panel">
-            <div class="side-panel-title">👤 Top Source</div>
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div class="avatar-circle">{initial}</div>
-                <div>
-                    <div style="font-weight:700; font-size:14.5px; color:#111827;">{top_source}</div>
-                    <div style="font-size:12.5px; color:#6B7280;">{top_count} stories in this briefing</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # --- Trending Topics (real keyword frequency, not invented) ---
-    trending = compute_trending_topics(filtered)
-    if trending:
-        rows_html = "".join(
-            f'<div class="trend-row"><span>{label}</span><span class="trend-count">{count}</span></div>'
-            for label, count in trending
+        st.markdown(
+            f'<div class="empty"><h3>No stories matched “{esc(query)}”</h3>'
+            f'<p>Try broader terms, remove the category filter, extend the lookback window, '
+            f'or increase ingestion depth in Feed settings.</p>'
+            f'<a class="btn" href="?view=home">View all news</a></div>',
+            unsafe_allow_html=True,
         )
-        st.markdown(f"""
-        <div class="side-panel">
-            <div class="side-panel-title">📈 Trending Topics</div>
-            {rows_html}
-        </div>
-        """, unsafe_allow_html=True)
-
-    # --- Active Filters ---
-    active_categories = ", ".join(CATEGORY_DISPLAY.get(c, c) for c in selected_categories) or "None selected"
-    search_row = f'<div class="filter-row"><span>Search</span><span class="filter-value">"{search_query}"</span></div>' if search_query else ""
-    st.markdown(f"""
-    <div class="side-panel">
-        <div class="side-panel-title">⚙️ Active Filters</div>
-        <div class="filter-row"><span>Categories</span><span class="filter-value">{active_categories}</span></div>
-        <div class="filter-row"><span>Lookback</span><span class="filter-value">Last {lookback_days}d</span></div>
-        {search_row}
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --- Feed Pulse (real pipeline metrics — replaces fabricated market tickers) ---
-    if filtered:
-        avg_score = round(sum(a["audit_relevance"] for a in filtered) / len(filtered))
-        today_count = sum(1 for a in filtered if format_relative_time(a["publishedAt"]) == "Today")
-        unique_sources = len(set(a["source"] for a in filtered))
     else:
-        avg_score, today_count, unique_sources = 0, 0, 0
+        # result breakdown chips
+        result_counts = Counter(a["category"] for a in filtered)
+        breakdown = "".join(
+            f'<span class="chip" style="color:{m["color"]};background:{m["tint"]};">'
+            f'{m["label"]} · {result_counts.get(k, 0)}</span> '
+            for k, m in CATEGORY_META.items() if result_counts.get(k, 0)
+        )
+        st.markdown(f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">{breakdown}</div>',
+                    unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div class="side-panel">
-        <div class="side-panel-title">📊 Feed Pulse</div>
-        <div class="pulse-row"><span>Avg Audit Score</span><span class="pulse-value">{avg_score}/100</span></div>
-        <div class="pulse-row"><span>Published Today</span><span class="pulse-value">{today_count}</span></div>
-        <div class="pulse-row"><span>Unique Sources</span><span class="pulse-value">{unique_sources}</span></div>
-    </div>
-    """, unsafe_allow_html=True)
+        rows_html = ""
+        for pos, article in enumerate(filtered, start=1):
+            haystack = " ".join([article["title"], article["description"], article["source"]])
+            snip = highlight_matches(snippet(article["description"] or article["title"], 220), tokens)
+            rows_html += (
+                f'<div class="res-row"><div class="res-rank">{pos:02d}</div><div class="res-main">'
+                f'<div class="res-top">{cat_chip(article["category"], with_emoji=True)}'
+                f'<span class="res-meta">{esc(article["source"])} · {rel_time(article["publishedAt"])} · '
+                f'Relevance <b>{article["audit_relevance"]}/100</b></span></div>'
+                f'<h3><a href="{article_link(articles.index(article))}">'
+                f'{highlight_matches(article["title"], tokens)}</a></h3>'
+                f'<p class="res-snip">{snip}</p>'
+                f'<div class="res-actions">'
+                f'<a class="txt-link" href="{article_link(articles.index(article))}">Read story →</a>'
+                f'<a class="txt-link" href="{esc(article["url"])}" target="_blank" rel="noopener noreferrer">Source ↗</a>'
+                f'</div></div></div>'
+            )
+        st.markdown(rows_html, unsafe_allow_html=True)
 
-    # --- Download CTA (functional — replaces a decorative email-subscribe box) ---
-    st.markdown("""
-    <div class="cta-panel">
-        <div class="cta-title">Audit Intelligence Brief</div>
-        <div class="cta-desc">Export this briefing as a CSV for Audit Committee and Chief Risk Officer distribution.</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if filtered:
-        df_export = pd.DataFrame(filtered)
-        csv = df_export.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Download Briefing CSV",
-            data=csv,
-            file_name=f"audit_intel_briefing_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.csv",
-            mime="text/csv",
-            use_container_width=True,
-            key="download_csv_sidebar",
+        if len(filtered) > 60:
+            st.caption("Showing the first 60 ranked results — refine your query for more precision.")
+    st.stop()
+
+
+# ===========================================================================
+# VIEW: HOME — featured analysis, insights grid, intelligence rail
+# ===========================================================================
+
+if not articles:
+    st.markdown(
+        '<div class="empty"><h3>No stories loaded yet</h3>'
+        '<p>Click “🔄 Fetch latest news” in Feed settings to pull the intelligence feed.</p></div>',
+        unsafe_allow_html=True,
+    )
+    st.stop()
+
+featured_pool = filtered if filtered else articles
+leader = articles[0] if articles else None
+side_picks = featured_pool[1:3]
+
+# ---------- Featured analysis ----------
+if featured_pool:
+    main_feat = featured_pool[0]
+    main_idx = articles.index(main_feat)
+    meta = CATEGORY_META.get(main_feat["category"], {})
+
+    hero_img = main_feat.get("image")
+    hero_visual = (
+        f'<img class="hero-img" src="{esc(hero_img)}" alt="{esc(main_feat["title"])}" loading="lazy" '
+        f'onerror="this.style.display=\'none\'">'
+        if hero_img
+        else f'<div class="hero-img" style="display:flex;align-items:center;justify-content:center;'
+             f'background:linear-gradient(120deg,{meta.get("tint","#EAF1FE")},{meta.get("color","#2563EB")}33)">'
+             f'<span style="font-size:54px">{meta.get("emoji","📰")}</span></div>'
+    )
+
+    side_html = ""
+    for pos, item in enumerate(side_picks, start=2):
+        meta_s = CATEGORY_META.get(item["category"], {})
+        side_html += (
+            f'<div class="feat-mini"><div class="feat-num">0{pos}</div><div style="min-width:0">'
+            f'<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'
+            f'{cat_chip(item["category"])}</div>'
+            f'<h4><a href="{article_link(articles.index(item))}">{esc(snippet(item["title"], 110))}</a></h4>'
+            f'<p>{esc(item["source"])} · {rel_time(item["publishedAt"])}</p></div></div>'
         )
 
-
-# ---------------------------------------------------------
-# 10. FOOTER
-# ---------------------------------------------------------
-
-st.markdown("""
-<div class="app-footer">
-    <div>
-        <div class="footer-brand"><span>🛡</span> Audit Intel</div>
-        <div class="footer-tagline">Curated intelligence feed for Audit Committees and Chief Risk Officers across banking and financial services.</div>
+    featured_html = f"""
+    <div class="featured">
+      <div class="hero-card">
+        <a href="{article_link(main_idx)}">{hero_visual}</a>
+        <div class="hero-body">
+          <div class="eyebrow">⭐ Featured Analysis · {rel_time(main_feat["publishedAt"])}</div>
+          {cat_chip(main_feat["category"], with_emoji=True)}
+          <h2><a href="{article_link(main_idx)}">{esc(main_feat["title"])}</a></h2>
+          <p>{esc(snippet(main_feat["description"] or "Top-ranked story in today's intelligence feed.", 240))}</p>
+          <div class="hero-meta">
+            <span class="rel-badge">{main_feat["audit_relevance"]}/100 relevance</span>
+            <span class="time">🏛 {esc(main_feat["source"])} · {esc(main_feat["author"] or "NewsAPI wire")}</span>
+          </div>
+          <div class="hero-actions">
+            <a class="btn" href="{article_link(main_idx)}">Read analysis</a>
+            <a class="btn-ghost" href="{esc(main_feat["url"])}" target="_blank" rel="noopener noreferrer">Open source ↗</a>
+          </div>
+        </div>
+      </div>
+      <div class="feat-side">{side_html or '<div class="feat-mini"><div class="feat-num">02</div><div><h4>More stories loading…</h4></div></div>'}</div>
     </div>
-    <div class="footer-links">
-        <span>About Us</span>
-        <span>Contact</span>
-        <span>Privacy Policy</span>
-        <span>Terms of Service</span>
-    </div>
-</div>
-<div class="footer-copyright">© 2026 Audit Intel &middot; Internal tool &middot; Not for external distribution</div>
-""", unsafe_allow_html=True)
+    """
+    st.markdown(featured_html, unsafe_allow_html=True)
+
+st.markdown(
+    '<div class="sec-head" style="margin-top:26px"><span class="sec-eyebrow">Latest Insights</span>'
+    f'<h2>Fresh from the desk</h2>'
+    f'<span class="sec-sub">{len(filtered)} story{"s" if len(filtered) != 1 else ""} · sorted by audit relevance</span></div>',
+    unsafe_allow_html=True,
+)
+
+# ---------- Main content + right intelligence rail ----------
+main_col, rail_col = st.columns([3, 1.12], gap="large")
+
+with main_col:
+    if not filtered:
+        st.markdown(
+            f'<div class="empty"><h3>No stories in {esc(picked_category)}</h3>'
+            f'<p>Select “All topics”, extend the lookback window, or increase ingestion depth '
+            f'in Feed settings.</p><a class="btn" href="?view=home">Reset view</a></div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        grid_html = "".join(card_html(a, articles.index(a)) for a in filtered[:60])
+        st.markdown(f'<div class="card-grid">{grid_html}</div>', unsafe_allow_html=True)
+        if len(filtered) > 60:
+            st.caption("Showing the first 60 stories — refine the category or search to focus.")
+
+with rail_col:
+    st.markdown(
+        leader_block(articles)
+        + trending_block(articles)
+        + active_filters_block(picked_category, lookback_days, page_size, query)
+        + pulse_block(articles),
+        unsafe_allow_html=True,
+    )
+
+# ---------- Diagnostics ----------
+if errors:
+    with st.expander("⚠️ Source / API diagnostics"):
+        for error in errors:
+            st.write(error)
+        st.caption("Other categories may have loaded normally — partial feed shown.")
+
+st.markdown(
+    '<div class="footer-note" style="margin-top:14px">Data source: NewsAPI (indexed sources only). '
+    'Deduplicated by URL + normalized title · Audit relevance & classification are rule-based '
+    'keyword signals, kept internal to ranking and filtering.</div>',
+    unsafe_allow_html=True,
+)
