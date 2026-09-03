@@ -11,7 +11,7 @@ import streamlit as st
 try:
     from config import API_KEY as CONFIG_API_KEY
 except ImportError:
-    CONFIG_API_KEY = "1186ffb930c54389982ecd79cb9b5fae"
+    CONFIG_API_KEY = ""
 
 
 # ---------------------------------------------------------
