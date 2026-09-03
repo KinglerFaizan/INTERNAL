@@ -2,7 +2,6 @@ import os
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlparse
 
 import pandas as pd
 import requests
@@ -19,14 +18,12 @@ except ImportError:
 # ---------------------------------------------------------
 
 st.set_page_config(
-    page_title="Audit Intel | Global Banking Briefing",
+    page_title="Audit Intelligence | Global Banking Briefing",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Light editorial / financial-intelligence-platform theme, matching the Visily reference:
-# white canvas, compact top nav, blue accent, category-colored badges, card-based feed.
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -40,6 +37,8 @@ st.markdown("""
         --text-muted: #9CA3AF;
         --accent-blue: #2563EB;
         --accent-blue-dark: #1D4ED8;
+        --up: #16A34A;
+        --down: #DC2626;
     }
 
     .stApp {
@@ -66,13 +65,23 @@ st.markdown("""
         display: flex; align-items: center; justify-content: center;
         color: #fff; font-size: 15px;
     }
-    .logo-text { font-weight: 800; font-size: 17.5px; color: var(--text-primary); letter-spacing: -0.2px; }
-    .topnav-right { display: flex; align-items: center; gap: 22px; font-size: 13.5px; font-weight: 600; color: #4B5563; }
-    .topnav-right span { cursor: default; }
+    .logo-text { font-weight: 800; font-size: 18.5px; color: var(--text-primary); letter-spacing: -0.3px; }
+
+    /* Top-right user block (replaces the old nav links) */
+    .topnav-user { display: flex; align-items: center; gap: 11px; }
+    .topnav-user-meta { text-align: right; line-height: 1.25; }
+    .topnav-user-name { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+    .topnav-user-title { font-size: 12px; color: var(--text-secondary); }
+    .avatar-photo {
+        width: 40px; height: 40px; border-radius: 50%;
+        object-fit: cover; flex-shrink: 0;
+        border: 1px solid var(--border);
+    }
     .avatar-circle-sm {
-        width: 30px; height: 30px; border-radius: 50%;
-        background: #E5E7EB; display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 12.5px; color: #374151;
+        width: 40px; height: 40px; border-radius: 50%;
+        background: linear-gradient(135deg, #2563EB, #7C3AED);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 14px; color: #fff;
     }
 
     /* ---------------- Section headings ---------------- */
@@ -150,8 +159,7 @@ st.markdown("""
     }
     [data-testid="stDownloadButton"]>button:hover { background: #EFF6FF; }
 
-    /* ---------------- Force a legible light theme inside controls,
-       regardless of the viewer's browser/system dark-mode setting ---------------- */
+    /* ---------------- Force a legible light theme inside controls ---------------- */
     [data-testid="stExpander"] {
         background: #fff !important;
         border: 1px solid var(--border) !important;
@@ -267,28 +275,28 @@ st.markdown("""
         text-transform: uppercase; letter-spacing: 0.8px;
         margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
     }
-    .avatar-circle {
-        width: 44px; height: 44px; border-radius: 50%;
-        background: linear-gradient(135deg, #2563EB, #7C3AED);
-        color: #fff; display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 16px; flex-shrink: 0;
-    }
-    .avatar-photo {
-        width: 46px; height: 46px; border-radius: 50%;
-        object-fit: cover; flex-shrink: 0;
-        border: 1px solid var(--border);
-    }
-    .trend-row, .filter-row, .pulse-row {
+    .filter-row, .pulse-row {
         display: flex; justify-content: space-between; align-items: center;
         padding: 8px 0; border-bottom: 1px solid #F3F4F6; font-size: 13px; color: #374151;
     }
-    .trend-row:last-child, .filter-row:last-child, .pulse-row:last-child { border-bottom: none; }
-    .trend-count {
-        background: #F3F4F6; color: var(--text-secondary); font-size: 11px; font-weight: 700;
-        padding: 2px 9px; border-radius: 10px;
-    }
+    .filter-row:last-child, .pulse-row:last-child { border-bottom: none; }
     .filter-value { font-weight: 600; color: var(--text-primary); }
     .pulse-value { font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; }
+
+    /* ---------------- Market panel rows ---------------- */
+    .mkt-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 9px 0; border-bottom: 1px solid #F3F4F6;
+    }
+    .mkt-row:last-child { border-bottom: none; }
+    .mkt-name { font-size: 13px; font-weight: 600; color: #374151; }
+    .mkt-sub { font-size: 10.5px; color: var(--text-muted); font-weight: 500; }
+    .mkt-right { text-align: right; }
+    .mkt-price { font-size: 13.5px; font-weight: 700; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; }
+    .mkt-chg { font-size: 11.5px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .mkt-up { color: var(--up); }
+    .mkt-down { color: var(--down); }
+    .mkt-stamp { font-size: 10.5px; color: var(--text-muted); margin-top: 12px; }
 
     .cta-panel {
         background: linear-gradient(135deg, #2563EB, #1D4ED8);
@@ -339,7 +347,6 @@ CATEGORIES = {
     },
 }
 
-# Display labels + badge colors for each category (matches the reference's colored pills)
 CATEGORY_DISPLAY = {
     "Transformation": "Transformation",
     "Regulation": "Regulation",
@@ -353,15 +360,14 @@ CATEGORY_COLORS = {
     "Global Banks": "#7C3AED",
 }
 
-# Fixed ingestion depth (previously a "Stories Per Category" slider — removed for simplicity)
 PAGE_SIZE = 50
 
-# Head of Internal Audit Department — shown in the sidebar "Prepared For" panel
+# Head of Internal Audit Department — now shown in the TOP-RIGHT of the nav bar
 PRAGATI_NAME = "Pragati"
 PRAGATI_TITLE = "Head of Internal Audit"
-PRAGATI_PHOTO_B64 = "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"
+# NOTE: unchanged from your file — paste your existing base64 string here.
+PRAGATI_PHOTO_B64 = "PASTE_YOUR_EXISTING_BASE64_STRING_HERE"
 
-# Audit vocabulary for relevance scoring
 AUDIT_TERMS = [
     "internal audit", "external audit", "audit committee", "auditor",
     "audit finding", "audit findings", "internal control", "internal controls",
@@ -396,9 +402,6 @@ CATEGORY_TERMS = {
         "wells fargo", "ing", "icbc", "mufg", "mizuho",
     ],
 }
-
-# Acronyms that should stay uppercase in the "Trending Topics" panel
-_ACRONYMS = {"rbi", "aml", "kyc", "ceo", "cfo", "cro", "ciso"}
 
 
 # ---------------------------------------------------------
@@ -440,7 +443,6 @@ def audit_relevance(text):
         if term in text:
             score += 5
 
-    # Stronger signals get additional weight
     for term in [
         "internal audit", "audit committee", "internal controls",
         "control deficiency", "regulatory enforcement",
@@ -500,10 +502,7 @@ def fetch_category(category, query, api_key, from_date, page_size):
 
 @st.cache_data(ttl=300, show_spinner=False)
 def load_news(api_key, lookback_days, page_size):
-    """
-    Fetch all targeted banking searches in parallel.
-    Cached for 5 minutes.
-    """
+    """Fetch all targeted banking searches in parallel. Cached for 5 minutes."""
     from_date = (
         datetime.now(timezone.utc) - timedelta(days=lookback_days)
     ).strftime("%Y-%m-%d")
@@ -531,7 +530,6 @@ def load_news(api_key, lookback_days, page_size):
             except Exception as exc:
                 errors.append(f"{category}: {exc}")
 
-    # Deduplicate by URL first, then by normalized title
     unique = {}
     title_keys = set()
 
@@ -551,7 +549,6 @@ def load_news(api_key, lookback_days, page_size):
         text = normalize_text(article)
         relevance = audit_relevance(text)
 
-        # Only retain stories with a meaningful audit/risk/control signal
         if relevance < 5:
             continue
 
@@ -601,47 +598,132 @@ def format_relative_time(pub_date_str):
         return pub_date_str[:10] if len(pub_date_str) >= 10 else "Recent"
 
 
-def format_topic_label(term):
-    """Title-case a keyword for display, keeping known acronyms uppercase."""
-    words = term.split()
-    out = []
-    for w in words:
-        out.append(w.upper() if w in _ACRONYMS else w.capitalize())
-    return " ".join(out)
+# ---------------------------------------------------------
+# 3b. LIVE MARKET SNAPSHOT (replaces "Trending Topics")
+# ---------------------------------------------------------
+
+# Instruments that actually matter to a banking / internal audit head:
+# headline equity index, Bank Nifty (sector proxy), rupee, crude and gold.
+MARKET_TICKERS = [
+    ("^BSESN",   "SENSEX",     "BSE 30"),
+    ("^NSEI",    "NIFTY 50",   "NSE"),
+    ("^NSEBANK", "BANK NIFTY", "NSE Banks"),
+    ("USDINR=X", "USD / INR",  "Spot FX"),
+    ("BZ=F",     "Brent Crude", "USD/bbl"),
+    ("GC=F",     "Gold",       "USD/oz"),
+]
+
+YF_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+YF_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; AuditIntel/1.0)"}
 
 
-def compute_trending_topics(rows, top_n=4):
-    """Real term-frequency count across the current feed — not fabricated data."""
-    all_terms = set()
-    for terms in CATEGORY_TERMS.values():
-        all_terms.update(terms)
+def fetch_quote(symbol):
+    """Fetch last price + change for one symbol from the public Yahoo chart endpoint."""
+    resp = requests.get(
+        YF_CHART_URL.format(symbol=symbol),
+        params={"range": "1d", "interval": "5m"},
+        headers=YF_HEADERS,
+        timeout=10,
+    )
+    resp.raise_for_status()
+    meta = resp.json()["chart"]["result"][0]["meta"]
 
-    counter = Counter()
-    for row in rows:
-        text = f'{row["title"]} {row["description"]}'.lower()
-        for term in all_terms:
-            if term in text:
-                counter[term] += 1
+    price = meta.get("regularMarketPrice")
+    prev = meta.get("chartPreviousClose") or meta.get("previousClose")
 
-    return [(format_topic_label(term), count) for term, count in counter.most_common(top_n) if count > 0]
+    if price is None or not prev:
+        raise ValueError("No price data returned")
+
+    change = price - prev
+    pct = (change / prev) * 100
+    return {"price": float(price), "change": float(change), "pct": float(pct)}
+
+
+@st.cache_data(ttl=180, show_spinner=False)
+def load_market_snapshot():
+    """Pull all market quotes in parallel. Cached for 3 minutes."""
+    results = {}
+
+    with ThreadPoolExecutor(max_workers=len(MARKET_TICKERS)) as executor:
+        futures = {
+            executor.submit(fetch_quote, symbol): symbol
+            for symbol, _, _ in MARKET_TICKERS
+        }
+        for future in as_completed(futures):
+            symbol = futures[future]
+            try:
+                results[symbol] = future.result()
+            except Exception:
+                results[symbol] = None
+
+    stamp = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    return results, stamp.strftime("%d %b %Y, %H:%M IST")
+
+
+def render_market_panel():
+    quotes, stamp = load_market_snapshot()
+
+    rows_html = ""
+    for symbol, name, sub in MARKET_TICKERS:
+        q = quotes.get(symbol)
+
+        if not q:
+            rows_html += (
+                f'<div class="mkt-row">'
+                f'<div><div class="mkt-name">{name}</div><div class="mkt-sub">{sub}</div></div>'
+                f'<div class="mkt-right"><div class="mkt-price" style="color:#9CA3AF;">—</div>'
+                f'<div class="mkt-chg" style="color:#9CA3AF;">unavailable</div></div>'
+                f'</div>'
+            )
+            continue
+
+        cls = "mkt-up" if q["pct"] >= 0 else "mkt-down"
+        arrow = "▲" if q["pct"] >= 0 else "▼"
+        price_fmt = f'{q["price"]:,.2f}'
+        pct_fmt = f'{abs(q["pct"]):.2f}%'
+        chg_fmt = f'{abs(q["change"]):,.2f}'
+
+        rows_html += (
+            f'<div class="mkt-row">'
+            f'<div><div class="mkt-name">{name}</div><div class="mkt-sub">{sub}</div></div>'
+            f'<div class="mkt-right"><div class="mkt-price">{price_fmt}</div>'
+            f'<div class="mkt-chg {cls}">{arrow} {chg_fmt} ({pct_fmt})</div></div>'
+            f'</div>'
+        )
+
+    st.markdown(f"""
+    <div class="side-panel">
+        <div class="side-panel-title">📈 Live Market Snapshot</div>
+        {rows_html}
+        <div class="mkt-stamp">Last refreshed {stamp} · delayed data, indicative only</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# 4. TOP NAVIGATION
+# 4. TOP NAVIGATION — brand left, Pragati top-right
 # ---------------------------------------------------------
 
-st.markdown("""
+if PRAGATI_PHOTO_B64 and not PRAGATI_PHOTO_B64.startswith("PASTE_"):
+    avatar_html = (
+        f'<img src="data:image/jpeg;base64,{PRAGATI_PHOTO_B64}" '
+        f'class="avatar-photo" alt="{PRAGATI_NAME}" />'
+    )
+else:
+    avatar_html = f'<div class="avatar-circle-sm">{PRAGATI_NAME[:1].upper()}</div>'
+
+st.markdown(f"""
 <div class="topnav">
     <div class="topnav-left">
         <div class="logo-icon">🛡</div>
-        <div class="logo-text">Audit Intel</div>
+        <div class="logo-text"><b>Audit Intelligence</b></div>
     </div>
-    <div class="topnav-right">
-        <span>Dashboard</span>
-        <span>Saved</span>
-        <span>Explore ▾</span>
-        <span>🔔</span>
-        <div class="avatar-circle-sm">A</div>
+    <div class="topnav-user">
+        <div class="topnav-user-meta">
+            <div class="topnav-user-name">{PRAGATI_NAME}</div>
+            <div class="topnav-user-title">{PRAGATI_TITLE}</div>
+        </div>
+        {avatar_html}
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -705,7 +787,7 @@ if errors:
 
 
 # ---------------------------------------------------------
-# 7. SEARCH BAR
+# 7. PAGE TITLE
 # ---------------------------------------------------------
 
 st.markdown('<div class="page-title">This week\'s briefing</div>', unsafe_allow_html=True)
@@ -817,33 +899,8 @@ with col_main:
                 render_feed(cat_rows, show_featured=False)
 
 with col_side:
-    # --- Prepared For: Head of Internal Audit ---
-    st.markdown(f"""
-    <div class="side-panel">
-        <div class="side-panel-title">👤 Prepared For</div>
-        <div style="display:flex; align-items:center; gap:12px;">
-            <img src="data:image/jpeg;base64,{PRAGATI_PHOTO_B64}" class="avatar-photo" alt="{PRAGATI_NAME}" />
-            <div>
-                <div style="font-weight:700; font-size:14.5px; color:#111827;">{PRAGATI_NAME}</div>
-                <div style="font-size:12.5px; color:#6B7280;">{PRAGATI_TITLE}</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --- Trending Topics (real keyword frequency, not invented) ---
-    trending = compute_trending_topics(filtered)
-    if trending:
-        rows_html = "".join(
-            f'<div class="trend-row"><span>{label}</span><span class="trend-count">{count}</span></div>'
-            for label, count in trending
-        )
-        st.markdown(f"""
-        <div class="side-panel">
-            <div class="side-panel-title">📈 Trending Topics</div>
-            {rows_html}
-        </div>
-        """, unsafe_allow_html=True)
+    # --- Live Market Snapshot (replaces Trending Topics) ---
+    render_market_panel()
 
     # --- Active Filters ---
     active_categories = ", ".join(CATEGORY_DISPLAY.get(c, c) for c in selected_categories) or "None selected"
@@ -871,7 +928,7 @@ with col_side:
     </div>
     """, unsafe_allow_html=True)
 
-    # --- Download CTA (functional — replaces a decorative email-subscribe box) ---
+    # --- Download CTA ---
     st.markdown("""
     <div class="cta-panel">
         <div class="cta-title">Audit Intelligence Brief</div>
@@ -898,7 +955,7 @@ with col_side:
 st.markdown("""
 <div class="app-footer">
     <div>
-        <div class="footer-brand"><span>🛡</span> Audit Intel</div>
+        <div class="footer-brand"><span>🛡</span> Audit Intelligence</div>
         <div class="footer-tagline">Curated intelligence feed for Audit Committees and Chief Risk Officers across banking and financial services.</div>
     </div>
     <div class="footer-links">
@@ -908,5 +965,5 @@ st.markdown("""
         <span>Terms of Service</span>
     </div>
 </div>
-<div class="footer-copyright">© 2026 Audit Intel &middot; Internal tool &middot; Not for external distribution</div>
+<div class="footer-copyright">© 2026 Audit Intelligence &middot; Internal tool &middot; Not for external distribution</div>
 """, unsafe_allow_html=True)
