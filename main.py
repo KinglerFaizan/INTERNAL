@@ -33,8 +33,8 @@ st.markdown("""
         --card: #FFFFFF;
         --border: #E5E7EB;
         --text-primary: #111827;
-        --text-secondary: #6B7280;
-        --text-muted: #9CA3AF;
+        --text-secondary: #4B5563;
+        --text-muted: #6B7280;
         --accent-blue: #2563EB;
         --accent-blue-dark: #1D4ED8;
         --up: #16A34A;
@@ -59,30 +59,89 @@ st.markdown("""
         border-bottom: 1px solid var(--border);
         margin-bottom: 8px;
     }
-    .topnav-left { display: flex; align-items: center; gap: 14px; }
+    .topnav-left { display: flex; align-items: center; gap: 18px; }
 
-    /* Gradient tile holding an inline radar/analytics mark (replaces the shield) */
+    /* ---- Emblem: deep navy tile, inner bevel, blue rim glow ---- */
     .logo-icon {
-        width: 52px; height: 52px; border-radius: 14px;
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 55%, #4F46E5 100%);
+        position: relative;
+        width: 62px; height: 62px;
+        border-radius: 18px;
+        background:
+            radial-gradient(120% 120% at 28% 18%, #3B82F6 0%, #1D4ED8 42%, #14264F 100%);
         display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.30);
+        box-shadow:
+            0 10px 26px rgba(29, 78, 216, 0.38),
+            0 2px 5px rgba(11, 18, 32, 0.22),
+            inset 0 1px 0 rgba(255, 255, 255, 0.42),
+            inset 0 -2px 6px rgba(3, 10, 26, 0.45);
+        flex-shrink: 0;
     }
-    .logo-icon svg { width: 30px; height: 30px; display: block; }
+    /* Hairline highlight ring */
+    .logo-icon::after {
+        content: "";
+        position: absolute; inset: 0;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.20);
+        pointer-events: none;
+    }
+    .logo-icon svg { width: 34px; height: 34px; display: block; }
 
+    /* ---- Wordmark ---- */
+    .logo-lockup { display: flex; flex-direction: column; }
+    .logo-textrow { display: flex; align-items: center; gap: 12px; }
     .logo-text {
         font-weight: 900;
-        font-size: 34px;
-        color: var(--text-primary);
-        letter-spacing: -1.1px;
-        line-height: 1.05;
+        font-size: 38px;
+        letter-spacing: -1.5px;
+        line-height: 1.02;
+        color: #0B1220;
+        white-space: nowrap;
     }
-    .logo-sub {
-        font-size: 11.5px; font-weight: 600; color: var(--text-muted);
-        letter-spacing: 1.4px; text-transform: uppercase; margin-top: 3px;
+    /* Two-tone: "Audit" in ink, "Intelligence" in a blue gradient */
+    .logo-text .lt-accent {
+        background: linear-gradient(92deg, #2563EB 0%, #4F46E5 55%, #7C3AED 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: #2563EB;
     }
 
-    /* ---- Top-right principal (Pragati) block — enlarged ---- */
+    /* Live status pill */
+    .live-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(22, 163, 74, 0.10);
+        border: 1px solid rgba(22, 163, 74, 0.35);
+        color: #15803D;
+        font-size: 10px; font-weight: 800;
+        letter-spacing: 1.2px; text-transform: uppercase;
+        padding: 4px 10px; border-radius: 999px;
+        white-space: nowrap;
+    }
+    .live-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #16A34A;
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.65);
+        animation: livepulse 2s infinite;
+    }
+    @keyframes livepulse {
+        0%   { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.60); }
+        70%  { box-shadow: 0 0 0 7px rgba(22, 163, 74, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+    }
+
+    /* Strapline with a leading accent rule */
+    .logo-sub {
+        display: flex; align-items: center; gap: 9px;
+        font-size: 11px; font-weight: 700; color: var(--text-muted);
+        letter-spacing: 2.1px; text-transform: uppercase; margin-top: 7px;
+    }
+    .logo-rule {
+        width: 30px; height: 3px; border-radius: 2px;
+        background: linear-gradient(90deg, #2563EB, #7C3AED);
+        flex-shrink: 0;
+    }
+
+    /* ---- Top-right principal (Pragati) block ---- */
     .topnav-user {
         display: flex; align-items: center; gap: 16px;
         background: var(--card);
@@ -96,7 +155,7 @@ st.markdown("""
         font-size: 10px; font-weight: 700; color: var(--accent-blue);
         letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;
     }
-    .topnav-user-name { font-weight: 800; font-size: 20px; color: var(--text-primary); letter-spacing: -0.3px; }
+    .topnav-user-name { font-weight: 800; font-size: 20px; color: #0B1220; letter-spacing: -0.3px; }
     .topnav-user-title { font-size: 13.5px; color: var(--text-secondary); font-weight: 500; }
     .topnav-user-stamp { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
     .avatar-photo {
@@ -113,7 +172,6 @@ st.markdown("""
         box-shadow: 0 0 0 2px var(--accent-blue);
     }
 
-    /* ---------------- Action bar (refresh) ---------------- */
     .action-caption {
         font-size: 11.5px; color: var(--text-muted);
         font-family: 'JetBrains Mono', monospace; padding-top: 10px;
@@ -123,13 +181,13 @@ st.markdown("""
     .section-heading {
         font-size: 15px;
         font-weight: 700;
-        color: var(--text-primary);
+        color: #0B1220;
         margin: 4px 0 14px 0;
     }
     .page-title {
         font-size: 26px;
         font-weight: 800;
-        color: var(--text-primary);
+        color: #0B1220;
         letter-spacing: -0.5px;
         margin-bottom: 2px;
     }
@@ -139,26 +197,64 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* ---------------- Pill tabs ---------------- */
+    /* ================= TAB VISIBILITY FIX =================
+       Streamlit nests each tab label inside <p>/<div> nodes and applies its
+       own theme colour + a red/pink highlight bar. Colour therefore has to be
+       forced on the INNER nodes (and via -webkit-text-fill-color) or the
+       inactive tabs render almost invisible against the light background. */
     div[data-testid="stTabs"] { margin-top: 4px; margin-bottom: 20px; }
-    div[data-testid="stTabs"] [role="tablist"] { gap: 4px; border-bottom: 1px solid var(--border); }
+    div[data-testid="stTabs"] [role="tablist"] {
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        background: transparent !important;
+    }
     div[data-testid="stTabs"] button[role="tab"] {
         border-radius: 0 !important;
-        padding: 8px 16px !important;
-        font-size: 12.5px !important;
-        font-weight: 700 !important;
+        padding: 9px 18px !important;
         letter-spacing: 0.3px;
         text-transform: uppercase;
         background: transparent !important;
         border: none !important;
-        border-bottom: 2px solid transparent !important;
-        color: var(--text-muted) !important;
+        border-bottom: 3px solid transparent !important;
+        opacity: 1 !important;
     }
-    div[data-testid="stTabs"] button[role="tab"]:hover { color: var(--text-primary) !important; }
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    div[data-testid="stTabs"] button[role="tab"],
+    div[data-testid="stTabs"] button[role="tab"] *,
+    div[data-testid="stTabs"] button[role="tab"] p {
+        color: #0B1220 !important;
+        -webkit-text-fill-color: #0B1220 !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        opacity: 1 !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"]:hover,
+    div[data-testid="stTabs"] button[role="tab"]:hover *,
+    div[data-testid="stTabs"] button[role="tab"]:hover p {
+        color: #000000 !important;
+        -webkit-text-fill-color: #000000 !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] *,
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
         color: var(--accent-blue) !important;
-        border-bottom: 2px solid var(--accent-blue) !important;
+        -webkit-text-fill-color: var(--accent-blue) !important;
+        font-weight: 800 !important;
     }
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        border-bottom: 3px solid var(--accent-blue) !important;
+    }
+    /* Remove Streamlit's default red/pink underline + focus ring */
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+        background-color: transparent !important;
+        display: none !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"]:focus,
+    div[data-testid="stTabs"] button[role="tab"]:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    /* ======================================================= */
 
     /* ---------------- Inputs ---------------- */
     .stTextInput>div>div>input {
@@ -177,24 +273,25 @@ st.markdown("""
     /* ---------------- Buttons ---------------- */
     .stButton>button {
         background: var(--accent-blue);
-        color: #fff;
+        color: #fff !important;
         border: none;
         border-radius: 8px;
         font-weight: 600;
         font-size: 13.5px;
         padding: 9px 18px;
     }
+    .stButton>button * { color: #fff !important; -webkit-text-fill-color: #fff !important; }
     .stButton>button:hover { background: var(--accent-blue-dark); }
     [data-testid="stDownloadButton"]>button {
         background: #fff;
-        color: var(--accent-blue);
+        color: var(--accent-blue) !important;
         border: 1px solid var(--accent-blue);
         border-radius: 8px;
         font-weight: 600;
     }
     [data-testid="stDownloadButton"]>button:hover { background: #EFF6FF; }
 
-    /* ---------------- Force a legible light theme inside controls ---------------- */
+    /* ---------------- Legible light theme inside controls ---------------- */
     [data-testid="stExpander"] {
         background: #fff !important;
         border: 1px solid var(--border) !important;
@@ -232,6 +329,8 @@ st.markdown("""
         border-radius: 16px;
         background-size: cover;
         background-position: center;
+        /* Fallback tint if the hero image fails to load */
+        background-color: #1E3A8A;
         overflow: hidden;
         margin-bottom: 30px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06);
@@ -263,15 +362,19 @@ st.markdown("""
         transition: box-shadow 0.15s ease, border-color 0.15s ease;
     }
     .insight-card:hover { border-color: #D1D5DB; box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
+    /* Thumbnails are real <img> elements (not CSS backgrounds) so that a
+       broken/hotlink-blocked remote image still paints the element's OWN
+       background — i.e. the newspaper placeholder shows through automatically. */
     .insight-thumb {
         width: 180px; min-width: 180px; height: 128px;
-        background-size: cover; background-position: center;
-        background-color: #F3F4F6;
         border-radius: 10px;
-    }
-    .insight-thumb-empty {
-        display: flex; align-items: center; justify-content: center;
-        font-size: 28px; color: #C7CBD3;
+        object-fit: cover;
+        background-color: #EEF2F7;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 52px 52px;
+        border: 1px solid var(--border);
+        display: block;
     }
     .insight-content { display: flex; flex-direction: column; min-width: 0; }
     .insight-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -282,7 +385,7 @@ st.markdown("""
     .insight-date { font-size: 12px; color: var(--text-muted); font-weight: 500; }
     .insight-title-link { text-decoration: none; }
     .insight-title {
-        font-size: 17px; font-weight: 700; color: var(--text-primary);
+        font-size: 17px; font-weight: 700; color: #0B1220;
         line-height: 1.35; margin-bottom: 6px;
     }
     .insight-title-link:hover .insight-title { color: var(--accent-blue); }
@@ -333,7 +436,7 @@ st.markdown("""
     .mkt-down { color: var(--down); }
     .mkt-stamp { font-size: 10.5px; color: var(--text-muted); margin-top: 12px; }
 
-    /* ---------------- Risk radar / exposure bars ---------------- */
+    /* ---------------- Risk radar ---------------- */
     .risk-row { padding: 8px 0; border-bottom: 1px solid #F3F4F6; }
     .risk-row:last-child { border-bottom: none; }
     .risk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
@@ -352,7 +455,7 @@ st.markdown("""
         letter-spacing: 0.6px; text-transform: uppercase;
     }
     .alert-text {
-        font-size: 12.5px; color: var(--text-primary); font-weight: 600; line-height: 1.4; margin-top: 3px;
+        font-size: 12.5px; color: #0B1220; font-weight: 600; line-height: 1.4; margin-top: 3px;
         display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .alert-item:hover .alert-text { color: var(--accent-blue); }
@@ -367,7 +470,6 @@ st.markdown("""
     .cta-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
     .cta-desc { font-size: 12.5px; color: rgba(255,255,255,0.85); line-height: 1.5; margin-bottom: 14px; }
 
-    /* ---------------- Empty state ---------------- */
     .empty-state-panel {
         text-align: center; padding: 48px;
         background: var(--card); border-radius: 16px; border: 1px dashed var(--border);
@@ -379,7 +481,7 @@ st.markdown("""
         display: flex; justify-content: space-between; align-items: flex-start;
         padding-top: 22px; margin-top: 8px;
     }
-    .footer-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 800; font-size: 14.5px; color: var(--text-primary); }
+    .footer-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 800; font-size: 14.5px; color: #0B1220; }
     .footer-tagline { font-size: 12px; color: var(--text-muted); max-width: 320px; line-height: 1.5; }
     .footer-links { display: flex; gap: 22px; font-size: 12.5px; color: var(--text-secondary); font-weight: 600; }
     .footer-copyright { font-size: 11.5px; color: var(--text-muted); margin-top: 18px; }
@@ -389,8 +491,6 @@ st.markdown("""
 
 # ---------------------------------------------------------
 # 2. BANKING AUDIT CATEGORIES & QUERIES
-#    Each category now runs MULTIPLE query variants so the feed
-#    pulls far more distinct articles from NewsAPI.
 # ---------------------------------------------------------
 
 CATEGORIES = {
@@ -438,13 +538,9 @@ CATEGORY_COLORS = {
     "Global Banks": "#7C3AED",
 }
 
-# NewsAPI allows pageSize up to 100 on /v2/everything.
 PAGE_SIZE = 100
-# Free/Developer plans cap results at the first 100 per query; paid plans paginate further.
-# Extra pages fail gracefully and are reported in diagnostics.
 MAX_PAGES = 2
 
-# Head of Internal Audit Department — shown top-right
 PRAGATI_NAME = "Pragati"
 PRAGATI_TITLE = "Head of Internal Audit"
 # NOTE: paste your existing base64 string back here.
@@ -458,14 +554,12 @@ AUDIT_TERMS = [
     "model risk", "compliance", "regulatory", "regulation", "supervision",
     "supervisory", "enforcement", "aml", "anti-money laundering", "kyc",
     "sanctions", "fraud", "misconduct", "financial crime",
-    # Broader banking-risk vocabulary so genuinely relevant stories are not dropped
     "bank", "banking", "lender", "rbi", "central bank", "basel", "npa",
     "asset quality", "provisioning", "capital adequacy", "credit risk",
     "liquidity", "penalty", "fined", "probe", "investigation", "whistleblower",
     "disclosure", "restatement", "irregularities", "lapses",
 ]
 
-# Terms that should always escalate a story into the priority alert panel
 ALERT_TERMS = [
     "enforcement", "penalty", "fined", "fine", "fraud", "misconduct",
     "investigation", "probe", "money laundering", "aml", "sanctions",
@@ -498,7 +592,24 @@ CATEGORY_TERMS = {
     ],
 }
 
-# Risk themes tracked in the "Risk Radar" panel (counts computed from the live feed)
+def placeholder_data_uri(hex_color="#94A3B8"):
+    """
+    Inline, URL-encoded newspaper SVG used as the thumbnail fallback.
+    Returned as a data: URI so it needs no network call and cannot itself fail.
+    """
+    c = hex_color.replace("#", "%23")
+    return (
+        "data:image/svg+xml;charset=utf-8,"
+        "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' "
+        f"stroke='{c}' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E"
+        "%3Cpath d='M4 5h13a1 1 0 0 1 1 1v12a2 2 0 0 0 2 2H5a1 1 0 0 1-1-1V5z'/%3E"
+        "%3Cpath d='M18 8h2a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2'/%3E"
+        "%3Cpath d='M7 8h7'/%3E%3Cpath d='M7 11.5h7'/%3E"
+        "%3Cpath d='M7 15h4'/%3E%3Cpath d='M13.5 15h.5'/%3E"
+        "%3C/svg%3E"
+    )
+
+
 RISK_THEMES = {
     "Financial crime / AML": (["aml", "anti-money laundering", "money laundering", "kyc", "financial crime", "sanctions"], "#DC2626"),
     "Enforcement / penalties": (["enforcement", "penalty", "fined", "fine", "settlement", "supervisory action"], "#EA580C"),
@@ -513,7 +624,6 @@ RISK_THEMES = {
 # ---------------------------------------------------------
 
 def get_api_key():
-    """Use Streamlit secrets/env first; the in-page form is the fallback."""
     if CONFIG_API_KEY.strip():
         return CONFIG_API_KEY.strip()
 
@@ -541,7 +651,6 @@ def normalize_text(article):
 
 
 def audit_relevance(text):
-    """Simple, transparent audit relevance score."""
     score = 0
     for term in AUDIT_TERMS:
         if term in text:
@@ -559,7 +668,6 @@ def audit_relevance(text):
 
 
 def classify_article(article):
-    """Classify using transparent keyword scoring."""
     text = normalize_text(article)
     scores = {}
 
@@ -578,7 +686,6 @@ def classify_article(article):
 
 
 def fetch_query(category, query, api_key, from_date, page_size, page):
-    """Fetch a single page of one query variant from NewsAPI."""
     url = "https://newsapi.org/v2/everything"
     params = {
         "q": query,
@@ -605,10 +712,6 @@ def fetch_query(category, query, api_key, from_date, page_size, page):
 
 @st.cache_data(ttl=300, show_spinner=False)
 def load_news(api_key, lookback_days, page_size, min_relevance):
-    """
-    Fan out every category's query variants (and pages) in parallel,
-    then dedupe and score. Cached for 5 minutes; the Refresh button clears it.
-    """
     from_date = (
         datetime.now(timezone.utc) - timedelta(days=lookback_days)
     ).strftime("%Y-%m-%d")
@@ -638,14 +741,12 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
                 api_total = max(api_total, total)
             except Exception as exc:
                 msg = str(exc)
-                # Page-2+ failures on the free tier are expected, not real errors
                 if page > 1 and ("upgrade" in msg.lower() or "developer" in msg.lower()):
                     continue
                 errors.append(f"{category} (page {page}): {msg}")
 
     raw_count = len(all_articles)
 
-    # Deduplicate by URL first, then by normalized title
     unique = {}
     title_keys = set()
 
@@ -657,7 +758,6 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
         if not key or key in unique or title in title_keys:
             continue
 
-        # NewsAPI marks pulled/blocked items as "[Removed]"
         if title.startswith("[removed]"):
             continue
 
@@ -709,7 +809,6 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
 
 
 def format_relative_time(pub_date_str):
-    """Formats relative date nicely (e.g. '3 days ago', '1 week ago')."""
     if not pub_date_str:
         return "Recent"
     try:
@@ -755,7 +854,6 @@ YF_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; AuditIntel/1.0)"}
 
 
 def fetch_quote(symbol):
-    """Fetch last price + change for one symbol from the public Yahoo chart endpoint."""
     resp = requests.get(
         YF_CHART_URL.format(symbol=symbol),
         params={"range": "1d", "interval": "5m"},
@@ -778,7 +876,6 @@ def fetch_quote(symbol):
 
 @st.cache_data(ttl=180, show_spinner=False)
 def load_market_snapshot():
-    """Pull all market quotes in parallel. Cached 3 min; Refresh button clears it."""
     results = {}
 
     with ThreadPoolExecutor(max_workers=len(MARKET_TICKERS)) as executor:
@@ -833,11 +930,10 @@ def render_market_panel():
 
 
 # ---------------------------------------------------------
-# 3c. RISK RADAR + PRIORITY ALERTS (computed from the live feed)
+# 3c. RISK RADAR + PRIORITY ALERTS
 # ---------------------------------------------------------
 
 def render_risk_radar(rows):
-    """Theme exposure across the current feed — real counts, no invented data."""
     if not rows:
         return
 
@@ -874,7 +970,6 @@ def render_risk_radar(rows):
 
 
 def render_priority_alerts(rows, limit=5):
-    """Stories carrying enforcement / fraud / AML signals — the ones a CAE reads first."""
     flagged = []
     for row in rows:
         text = f'{row["title"]} {row["description"]}'.lower()
@@ -905,7 +1000,6 @@ def render_priority_alerts(rows, limit=5):
 
 
 def render_source_panel(rows, limit=5):
-    """Which outlets are driving the briefing — useful for source-reliance judgement."""
     if not rows:
         return
 
@@ -924,7 +1018,7 @@ def render_source_panel(rows, limit=5):
 
 
 # ---------------------------------------------------------
-# 4. TOP NAVIGATION — bigger wordmark, radar logo, larger principal block
+# 4. TOP NAVIGATION
 # ---------------------------------------------------------
 
 if PRAGATI_PHOTO_B64 and not PRAGATI_PHOTO_B64.startswith("PASTE_"):
@@ -935,16 +1029,28 @@ if PRAGATI_PHOTO_B64 and not PRAGATI_PHOTO_B64.startswith("PASTE_"):
 else:
     avatar_html = f'<div class="avatar-circle-lg">{PRAGATI_NAME[:1].upper()}</div>'
 
-# Inline SVG: concentric radar sweep with a rising signal bar — reads as
-# "surveillance + analytics" rather than the generic security shield.
+# Emblem: an audit lens (magnifier) whose glass contains a rising analytics
+# bar chart, framed by a scanning arc — "examine + measure + monitor".
 LOGO_SVG = """
-<svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.9"
-     stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="12" cy="12" r="9" opacity="0.35"/>
-  <circle cx="12" cy="12" r="5.5" opacity="0.6"/>
-  <circle cx="12" cy="12" r="1.6" fill="#FFFFFF" stroke="none"/>
-  <path d="M12 12 L18.4 5.6" opacity="0.95"/>
-  <path d="M6.5 16.5 L9.5 13.2 L12.2 15 L16.4 9.8" opacity="0.95"/>
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- outer scanning arc -->
+  <path d="M26.6 8.4a13 13 0 0 1 .9 13.4" stroke="#FFFFFF" stroke-opacity="0.42"
+        stroke-width="2" stroke-linecap="round"/>
+  <path d="M5.2 22.6a13 13 0 0 1 .5-13.9" stroke="#FFFFFF" stroke-opacity="0.42"
+        stroke-width="2" stroke-linecap="round"/>
+
+  <!-- lens ring -->
+  <circle cx="14.6" cy="14.6" r="8.2" stroke="#FFFFFF" stroke-width="2.4"/>
+  <circle cx="14.6" cy="14.6" r="8.2" fill="#FFFFFF" fill-opacity="0.14"/>
+
+  <!-- analytics bars inside the lens -->
+  <rect x="10.7" y="15.1" width="2.25" height="4.5" rx="1.12" fill="#FFFFFF"/>
+  <rect x="13.9" y="12.2" width="2.25" height="7.4" rx="1.12" fill="#FFFFFF"/>
+  <rect x="17.1" y="9.6"  width="2.25" height="10"  rx="1.12" fill="#FFFFFF"/>
+
+  <!-- handle -->
+  <path d="M20.9 20.9 L26.4 26.4" stroke="#FFFFFF" stroke-width="3.1"
+        stroke-linecap="round"/>
 </svg>
 """
 
@@ -952,9 +1058,12 @@ st.markdown(f"""
 <div class="topnav">
     <div class="topnav-left">
         <div class="logo-icon">{LOGO_SVG}</div>
-        <div>
-            <div class="logo-text">Audit Intelligence</div>
-            <div class="logo-sub">Global Banking Risk & Controls Briefing</div>
+        <div class="logo-lockup">
+            <div class="logo-textrow">
+                <div class="logo-text">Audit<span class="lt-accent">&nbsp;Intelligence</span></div>
+                <span class="live-pill"><span class="live-dot"></span>Live</span>
+            </div>
+            <div class="logo-sub"><span class="logo-rule"></span>Global Banking Risk &amp; Controls Briefing</div>
         </div>
     </div>
     <div class="topnav-user">
@@ -989,7 +1098,6 @@ with act_r:
     )
 
 if hard_refresh:
-    # Clear both caches so the next call genuinely re-hits NewsAPI and Yahoo
     load_news.clear()
     load_market_snapshot.clear()
     st.session_state.pop("news_loaded", None)
@@ -1055,12 +1163,11 @@ stats = st.session_state.get("news_stats", {})
 
 filtered = [a for a in articles if a["category"] in selected_categories] if selected_categories else []
 
-# Ingestion diagnostics — shows exactly where articles are being lost
 with st.expander("🔎 Ingestion Diagnostics", expanded=False):
     if stats:
         st.markdown(
             f"""
-            <div style="font-size:12.5px; color:#374151; line-height:1.9;">
+            <div style="font-size:12.5px; color:#111827; line-height:1.9;">
             <b>{stats['queries_run']}</b> query/page requests sent ·
             <b>{stats['raw']}</b> articles returned by NewsAPI ·
             <b>{stats['deduped']}</b> after de-duplication ·
@@ -1085,7 +1192,7 @@ with st.expander("🔎 Ingestion Diagnostics", expanded=False):
 
 st.markdown('<div class="page-title">This week\'s briefing</div>', unsafe_allow_html=True)
 st.markdown(
-    f'<div class="page-subtitle">{len(filtered)} items &nbsp;·&nbsp; verified banking internal controls & regulatory surveillance</div>',
+    f'<div class="page-subtitle">{len(filtered)} items &nbsp;·&nbsp; verified banking internal controls &amp; regulatory surveillance</div>',
     unsafe_allow_html=True,
 )
 
@@ -1122,10 +1229,19 @@ def render_insight_card(article):
     rel_time = format_relative_time(article["publishedAt"])
     description_text = article["description"] or "Independent institutional briefing coverage. Select below to review the full verified source documentation."
 
-    if article["image_url"]:
-        thumb_html = f'<div class="insight-thumb" style="background-image: url(\'{article["image_url"]}\');"></div>'
-    else:
-        thumb_html = '<div class="insight-thumb insight-thumb-empty">📰</div>'
+    # Category-tinted newspaper placeholder, painted as the <img>'s own background.
+    # If the remote image is missing, dead, or hotlink-blocked (403), the browser
+    # discards the src and this placeholder remains visible — no more blank boxes.
+    fallback = placeholder_data_uri(color)
+    # An empty src="" makes some browsers re-request the page, so omit it entirely.
+    src_attr = f'src="{article["image_url"]}" ' if article["image_url"] else ""
+
+    thumb_html = (
+        f'<img class="insight-thumb" {src_attr}alt="" loading="lazy" '
+        f'referrerpolicy="no-referrer" '
+        f'style="background-image: url(&quot;{fallback}&quot;);" '
+        f'onerror="this.onerror=null; this.removeAttribute(\'src\');" />'
+    )
 
     st.markdown(f"""
     <div class="insight-card">
@@ -1152,7 +1268,7 @@ def render_feed(rows, show_featured=True):
         st.markdown("""
         <div class="empty-state-panel">
             <div style="font-size: 18px; font-weight: 700; color: #111827;">No briefing stories found</div>
-            <div style="font-size: 13.5px; color: #6B7280; margin-top: 6px;">Try expanding the lookback window or lowering the relevance floor above.</div>
+            <div style="font-size: 13.5px; color: #4B5563; margin-top: 6px;">Try expanding the lookback window or lowering the relevance floor above.</div>
         </div>
         """, unsafe_allow_html=True)
         return
@@ -1171,7 +1287,7 @@ def render_feed(rows, show_featured=True):
 
 
 # ---------------------------------------------------------
-# 10. MAIN LAYOUT — feed (left) + intelligence sidebar (right)
+# 10. MAIN LAYOUT
 # ---------------------------------------------------------
 
 col_main, col_side = st.columns([2.3, 1], gap="large")
