@@ -197,64 +197,75 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* ================= TAB VISIBILITY FIX =================
-       Streamlit nests each tab label inside <p>/<div> nodes and applies its
-       own theme colour + a red/pink highlight bar. Colour therefore has to be
-       forced on the INNER nodes (and via -webkit-text-fill-color) or the
-       inactive tabs render almost invisible against the light background. */
-    div[data-testid="stTabs"] { margin-top: 4px; margin-bottom: 20px; }
-    div[data-testid="stTabs"] [role="tablist"] {
-        gap: 4px;
-        border-bottom: 1px solid var(--border);
-        background: transparent !important;
-    }
-    div[data-testid="stTabs"] button[role="tab"] {
-        border-radius: 0 !important;
-        padding: 9px 18px !important;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
-        background: transparent !important;
-        border: none !important;
-        border-bottom: 3px solid transparent !important;
-        opacity: 1 !important;
-    }
-    div[data-testid="stTabs"] button[role="tab"],
-    div[data-testid="stTabs"] button[role="tab"] *,
-    div[data-testid="stTabs"] button[role="tab"] p {
-        color: #0B1220 !important;
-        -webkit-text-fill-color: #0B1220 !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        opacity: 1 !important;
-    }
-    div[data-testid="stTabs"] button[role="tab"]:hover,
-    div[data-testid="stTabs"] button[role="tab"]:hover *,
-    div[data-testid="stTabs"] button[role="tab"]:hover p {
-        color: #000000 !important;
-        -webkit-text-fill-color: #000000 !important;
-    }
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] *,
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
-        color: var(--accent-blue) !important;
-        -webkit-text-fill-color: var(--accent-blue) !important;
-        font-weight: 800 !important;
-    }
-    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        border-bottom: 3px solid var(--accent-blue) !important;
-    }
-    /* Remove Streamlit's default red/pink underline + focus ring */
-    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
-    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
-        background-color: transparent !important;
-        display: none !important;
-    }
-    div[data-testid="stTabs"] button[role="tab"]:focus,
-    div[data-testid="stTabs"] button[role="tab"]:focus-visible {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-    /* ======================================================= */
+   /* ================= TAB VISIBILITY FIX ================= */
+div[data-testid="stTabs"] {
+    margin-top: 4px;
+    margin-bottom: 20px;
+}
+
+div[data-testid="stTabs"] [role="tablist"] {
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    background: transparent !important;
+}
+
+div[data-testid="stTabs"] button[role="tab"] {
+    border-radius: 0 !important;
+    padding: 9px 18px !important;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 3px solid transparent !important;
+    opacity: 1 !important;
+}
+
+/* Dark brown tab text */
+div[data-testid="stTabs"] button[role="tab"],
+div[data-testid="stTabs"] button[role="tab"] *,
+div[data-testid="stTabs"] button[role="tab"] p {
+    color: #4A2C20 !important;
+    -webkit-text-fill-color: #4A2C20 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    opacity: 1 !important;
+}
+
+/* Darker brown on hover */
+div[data-testid="stTabs"] button[role="tab"]:hover,
+div[data-testid="stTabs"] button[role="tab"]:hover *,
+div[data-testid="stTabs"] button[role="tab"]:hover p {
+    color: #321B12 !important;
+    -webkit-text-fill-color: #321B12 !important;
+}
+
+/* Active tab - dark brown */
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] *,
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+    color: #321B12 !important;
+    -webkit-text-fill-color: #321B12 !important;
+    font-weight: 800 !important;
+}
+
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    border-bottom: 3px solid #321B12 !important;
+}
+
+/* Remove Streamlit's default red/pink underline */
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+    background-color: transparent !important;
+    display: none !important;
+}
+
+/* Remove focus ring */
+div[data-testid="stTabs"] button[role="tab"]:focus,
+div[data-testid="stTabs"] button[role="tab"]:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+/* ======================================================= */
 
     /* ---------------- Inputs ---------------- */
     .stTextInput>div>div>input {
