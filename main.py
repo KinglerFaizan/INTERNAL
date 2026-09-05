@@ -197,75 +197,87 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-   /* ================= TAB VISIBILITY FIX ================= */
-div[data-testid="stTabs"] {
-    margin-top: 4px;
-    margin-bottom: 20px;
-}
+       /* ================= TAB VISIBILITY FIX (BaseWeb-safe) ================= */
+    .stTabs, div[data-testid="stTabs"] { margin-top: 4px; margin-bottom: 20px; }
 
-div[data-testid="stTabs"] [role="tablist"] {
-    gap: 4px;
-    border-bottom: 1px solid var(--border);
-    background: transparent !important;
-}
+    .stTabs div[data-baseweb="tab-list"],
+    div[data-testid="stTabs"] [role="tablist"] {
+        gap: 4px !important;
+        border-bottom: 1px solid var(--border) !important;
+        background: transparent !important;
+    }
 
-div[data-testid="stTabs"] button[role="tab"] {
-    border-radius: 0 !important;
-    padding: 9px 18px !important;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    background: transparent !important;
-    border: none !important;
-    border-bottom: 3px solid transparent !important;
-    opacity: 1 !important;
-}
+    /* Base label — force on button AND every inner node (p / div / span),
+       including -webkit-text-fill-color which overrides plain `color`. */
+    .stTabs button[data-baseweb="tab"],
+    .stTabs button[role="tab"],
+    div[data-testid="stTabs"] button[role="tab"],
+    .stTabs button[data-baseweb="tab"] *,
+    .stTabs button[role="tab"] *,
+    div[data-testid="stTabs"] button[role="tab"] * {
+        color: #0B1220 !important;
+        -webkit-text-fill-color: #0B1220 !important;
+        opacity: 1 !important;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.3px !important;
+        text-transform: uppercase !important;
+    }
 
-/* Dark brown tab text */
-div[data-testid="stTabs"] button[role="tab"],
-div[data-testid="stTabs"] button[role="tab"] *,
-div[data-testid="stTabs"] button[role="tab"] p {
-    color: #4A2C20 !important;
-    -webkit-text-fill-color: #4A2C20 !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    opacity: 1 !important;
-}
+    .stTabs button[data-baseweb="tab"],
+    .stTabs button[role="tab"],
+    div[data-testid="stTabs"] button[role="tab"] {
+        background: transparent !important;
+        border: none !important;
+        border-bottom: 3px solid transparent !important;
+        border-radius: 0 !important;
+        padding: 9px 18px !important;
+        height: auto !important;
+    }
 
-/* Darker brown on hover */
-div[data-testid="stTabs"] button[role="tab"]:hover,
-div[data-testid="stTabs"] button[role="tab"]:hover *,
-div[data-testid="stTabs"] button[role="tab"]:hover p {
-    color: #321B12 !important;
-    -webkit-text-fill-color: #321B12 !important;
-}
+    /* Hover */
+    .stTabs button[data-baseweb="tab"]:hover,
+    .stTabs button[data-baseweb="tab"]:hover *,
+    .stTabs button[role="tab"]:hover,
+    .stTabs button[role="tab"]:hover * {
+        color: #000000 !important;
+        -webkit-text-fill-color: #000000 !important;
+        background: transparent !important;
+    }
 
-/* Active tab - dark brown */
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] *,
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
-    color: #321B12 !important;
-    -webkit-text-fill-color: #321B12 !important;
-    font-weight: 800 !important;
-}
+    /* Selected tab */
+    .stTabs button[aria-selected="true"],
+    .stTabs button[aria-selected="true"] *,
+    div[data-testid="stTabs"] button[aria-selected="true"],
+    div[data-testid="stTabs"] button[aria-selected="true"] * {
+        color: #2563EB !important;
+        -webkit-text-fill-color: #2563EB !important;
+        font-weight: 800 !important;
+    }
+    .stTabs button[aria-selected="true"],
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        border-bottom: 3px solid #2563EB !important;
+    }
 
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    border-bottom: 3px solid #321B12 !important;
-}
-
-/* Remove Streamlit's default red/pink underline */
-div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
-div[data-testid="stTabs"] [data-baseweb="tab-border"] {
-    background-color: transparent !important;
-    display: none !important;
-}
-
-/* Remove focus ring */
-div[data-testid="stTabs"] button[role="tab"]:focus,
-div[data-testid="stTabs"] button[role="tab"]:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-}
-/* ======================================================= */
+    /* Kill Streamlit/BaseWeb's default red highlight bar + focus ring */
+    .stTabs [data-baseweb="tab-highlight"],
+    .stTabs [data-baseweb="tab-border"],
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+        background-color: transparent !important;
+        background-image: none !important;
+        height: 0 !important;
+        display: none !important;
+    }
+    .stTabs button:focus,
+    .stTabs button:focus-visible,
+    .stTabs button:active {
+        outline: none !important;
+        box-shadow: none !important;
+        color: #2563EB !important;
+        -webkit-text-fill-color: #2563EB !important;
+    }
+    /* ===================================================================== */
 
     /* ---------------- Inputs ---------------- */
     .stTextInput>div>div>input {
