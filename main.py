@@ -379,17 +379,43 @@ st.markdown("""
     }
     .featured-meta { font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
     .featured-link-overlay { position: absolute; inset: 0; z-index: 3; }
-    .featured-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin:8px 0 28px; }
-    .featured-tile { position:relative; min-height:382px; border-radius:15px; overflow:hidden; background:#fff; border:1px solid #E5E7EB; box-shadow:0 6px 20px rgba(15,23,42,.07); transition:transform .16s ease, box-shadow .16s ease; }
-    .featured-tile:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(15,23,42,.11); }
-    .featured-tile-bg { position:absolute; left:0; right:0; top:0; height:170px; background-size:cover; background-position:center; background-color:#E8EEF8; }
-    .featured-tile-overlay { position:absolute; left:0; right:0; top:138px; height:42px; background:linear-gradient(180deg,rgba(255,255,255,0),#fff); }
-    .featured-tile-body { position:absolute; left:15px; right:15px; top:166px; bottom:14px; z-index:2; display:flex; flex-direction:column; }
-    .featured-tile-tag { display:inline-block; align-self:flex-start; color:#1D4ED8; background:#EEF4FF; border:1px solid #DCE8FF; font-size:9px; font-weight:800; padding:4px 8px; border-radius:999px; text-transform:none; letter-spacing:.1px; margin-bottom:9px; }
-    .featured-tile-title { color:#111827; font-size:15px; font-weight:800; line-height:1.35; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; text-decoration:none; }
-    .featured-tile-title:hover { color:#2563EB; }
-    .featured-tile-meta { color:#6B7280; font-size:10.5px; margin-top:auto; padding-top:8px; }
-    .featured-rank { position:absolute; top:10px; left:10px; z-index:3; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#2563EB; color:#fff; font-size:11px; font-weight:900; box-shadow:0 3px 9px rgba(37,99,235,.3); }
+    .featured-carousel { position:relative; height:390px; margin:8px 0 30px; border-radius:18px; overflow:hidden; background:#0F172A; box-shadow:0 12px 34px rgba(15,23,42,.12); }
+    .featured-slide { position:absolute; inset:0; opacity:0; transform:scale(1.015); animation:featuredCycle 24s infinite; animation-fill-mode:both; }
+    .featured-slide:nth-child(1) { animation-delay:0s; }
+    .featured-slide:nth-child(2) { animation-delay:6s; }
+    .featured-slide:nth-child(3) { animation-delay:12s; }
+    .featured-slide:nth-child(4) { animation-delay:18s; }
+    .featured-slide-bg { position:absolute; inset:0; background-size:cover; background-position:center; background-color:#172554; }
+    .featured-slide-bg::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(2,6,23,.88) 0%,rgba(2,6,23,.62) 48%,rgba(2,6,23,.20) 100%),linear-gradient(0deg,rgba(2,6,23,.72) 0%,rgba(2,6,23,0) 58%); }
+    .featured-slide-content { position:absolute; left:34px; right:34px; bottom:30px; z-index:2; max-width:780px; }
+    .featured-slide-kicker { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .featured-slide-rank { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#2563EB; color:#fff; font-size:11px; font-weight:900; box-shadow:0 5px 14px rgba(37,99,235,.35); }
+    .featured-slide-tag { display:inline-flex; align-items:center; padding:5px 10px; border-radius:999px; color:#fff; font-size:10px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; background:rgba(37,99,235,.88); border:1px solid rgba(255,255,255,.22); }
+    .featured-slide-title { color:#fff; font-size:29px; font-weight:850; line-height:1.22; letter-spacing:-.5px; text-decoration:none; text-shadow:0 2px 18px rgba(0,0,0,.32); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+    .featured-slide-title:hover { color:#DBEAFE; }
+    .featured-slide-meta { color:rgba(255,255,255,.78); font-size:12px; margin-top:12px; font-weight:600; }
+    .featured-progress { position:absolute; left:34px; right:34px; top:20px; z-index:4; display:flex; gap:6px; }
+    .featured-progress span { flex:1; height:3px; border-radius:99px; background:rgba(255,255,255,.25); overflow:hidden; position:relative; }
+    .featured-progress span::after { content:""; position:absolute; inset:0; background:#fff; transform:scaleX(0); transform-origin:left; animation:featuredProgress 24s linear infinite; }
+    .featured-progress span:nth-child(1)::after { animation-delay:0s; }
+    .featured-progress span:nth-child(2)::after { animation-delay:6s; }
+    .featured-progress span:nth-child(3)::after { animation-delay:12s; }
+    .featured-progress span:nth-child(4)::after { animation-delay:18s; }
+    @keyframes featuredCycle {
+        0%, 24% { opacity:1; transform:scale(1); }
+        25%, 100% { opacity:0; transform:scale(1.015); }
+    }
+    @keyframes featuredProgress {
+        0%, 24% { transform:scaleX(1); }
+        25%, 100% { transform:scaleX(0); }
+    }
+    .featured-reduced-motion { animation:none !important; }
+    @media (prefers-reduced-motion: reduce) {
+        .featured-slide { animation:none !important; opacity:0; transform:none; }
+        .featured-slide:first-child { opacity:1; }
+        .featured-progress span::after { animation:none !important; }
+        .featured-progress span:first-child::after { transform:scaleX(1); }
+    }
 
     /* ---------------- Application shell / sidebar ---------------- */
     [data-testid="stSidebar"] { background:#FFFFFF !important; border-right:1px solid #E5E7EB; }
@@ -432,33 +458,47 @@ st.markdown("""
     .news-section-title-main { font-size:18px; font-weight:800; color:#0B1220; }
     .news-section-title-sub { font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
     .sidebar-brand, .sidebar-brand-title, .sidebar-brand-sub { display:none; }
-    @media (max-width:1100px) { .featured-strip { grid-template-columns:repeat(3,minmax(0,1fr)); } }
-    @media (max-width:700px) { .featured-strip { grid-template-columns:1fr; } }
+    @media (max-width:900px) {
+        .featured-carousel { height:420px; }
+        .featured-slide-title { font-size:24px; }
+        .featured-slide-content { left:24px; right:24px; bottom:24px; }
+        .featured-progress { left:24px; right:24px; }
+    }
+    @media (max-width:600px) {
+        .featured-carousel { height:440px; }
+        .featured-slide-title { font-size:21px; }
+        .featured-slide-content { left:20px; right:20px; bottom:20px; }
+        .featured-progress { left:20px; right:20px; }
+    }
 
     /* ---------------- Insight cards ---------------- */
     .insight-card {
-        display: flex;
-        gap: 20px;
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 16px;
-        margin-bottom: 16px;
-        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        display:flex;
+        flex-direction:column;
+        gap:0;
+        height:100%;
+        background:var(--card);
+        border:1px solid var(--border);
+        border-radius:15px;
+        padding:12px;
+        margin-bottom:0;
+        transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+        box-shadow:0 4px 16px rgba(15,23,42,.045);
     }
-    .insight-card:hover { border-color: #D1D5DB; box-shadow: 0 4px 14px rgba(0,0,0,0.05); }
+    .insight-card:hover { transform:translateY(-2px); border-color:#CBD5E1; box-shadow:0 10px 26px rgba(15,23,42,.09); }
     .insight-thumb {
-        width: 180px; min-width: 180px; height: 128px;
-        border-radius: 10px;
-        object-fit: cover;
-        background-color: #EEF2F7;
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: 52px 52px;
-        border: 1px solid var(--border);
-        display: block;
+        width:100%; min-width:0; height:170px;
+        border-radius:11px;
+        object-fit:cover;
+        background-color:#EEF2F7;
+        background-repeat:no-repeat;
+        background-position:center;
+        background-size:52px 52px;
+        border:1px solid #E5E7EB;
+        display:block;
+        margin-bottom:12px;
     }
-    .insight-content { display: flex; flex-direction: column; min-width: 0; }
+    .insight-content { display:flex; flex-direction:column; min-width:0; flex:1; padding:1px 3px 2px; }
     .insight-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .badge {
         display: inline-block; color: #fff; font-size: 10.5px; font-weight: 700;
@@ -1562,9 +1602,10 @@ def priority_score(article):
     return article.get("audit_relevance", 0) + (alert_hits * 8) + (cyber_hits * 2)
 
 
-def render_featured_strip(rows, limit=5):
+def render_featured_strip(rows, limit=4):
     if not rows:
         return
+
     today_rows = [a for a in rows if format_relative_time(a["publishedAt"]) == "Today"]
     source_rows = today_rows if len(today_rows) >= 4 else rows
     ranked = sorted(
@@ -1573,27 +1614,37 @@ def render_featured_strip(rows, limit=5):
         reverse=True,
     )[:limit]
 
-    cards = []
+    slides = []
     for idx, article in enumerate(ranked, 1):
         color = CATEGORY_COLORS.get(article["category"], "#2563EB")
         label = CATEGORY_DISPLAY.get(article["category"], article["category"])
         title = (article["title"] or "Untitled").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         source = (article["source"] or "Source").replace("&", "&amp;")
         image = article.get("image_url") or ""
-        bg = f"url('{image}')" if image else "linear-gradient(135deg,#1E3A8A,#2563EB)"
-        cards.append(
-            f'<div class="featured-tile">'
-            f'<div class="featured-tile-bg" style="background-image:{bg};"></div>'
-            f'<div class="featured-tile-overlay"></div>'
-            f'<div class="featured-rank">{idx}</div>'
-            f'<div class="featured-tile-body">'
-            f'<span class="featured-tile-tag" style="background:{color};">{label}</span>'
-            f'<a class="featured-tile-title" href="{article["url"]}" target="_blank">{title}</a>'
-            f'<div class="featured-tile-meta">{source} · {format_relative_time(article["publishedAt"])}</div>'
+        bg = f"url('{image}')" if image else "linear-gradient(135deg,#0F172A,#2563EB)"
+        slides.append(
+            f'<div class="featured-slide">'
+            f'<div class="featured-slide-bg" style="background-image:{bg};"></div>'
+            f'<div class="featured-slide-content">'
+            f'<div class="featured-slide-kicker">'
+            f'<span class="featured-slide-rank">{idx}</span>'
+            f'<span class="featured-slide-tag" style="background:{color};">{label}</span>'
+            f'</div>'
+            f'<a class="featured-slide-title" href="{article["url"]}" target="_blank">{title}</a>'
+            f'<div class="featured-slide-meta">{source} · {format_relative_time(article["publishedAt"])} · Featured intelligence</div>'
             f'</div></div>'
         )
 
-    st.markdown('<div class="featured-strip">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
+    # The carousel intentionally uses four stories and rotates client-side.
+    # This avoids repeated NewsAPI calls/reruns just to change the visible story.
+    progress = ''.join('<span></span>' for _ in range(len(slides)))
+    st.markdown(
+        '<div class="featured-carousel">'
+        f'<div class="featured-progress">{progress}</div>'
+        + ''.join(slides)
+        + '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_feed(rows, show_featured=False):
@@ -1607,14 +1658,27 @@ def render_feed(rows, show_featured=False):
         return
 
     if show_featured:
-        render_featured_strip(rows, 5)
+        st.markdown(
+            '<div class="news-section-title">'
+            '<div><div class="news-section-title-main">Featured Intelligence</div>'
+            '<div style="font-size:12px;color:#64748B;margin-top:3px;">Four priority stories · rotating every 6 seconds</div></div>'
+            '<div class="news-section-title-sub">01—04</div></div>',
+            unsafe_allow_html=True,
+        )
+        render_featured_strip(rows, 4)
 
     st.markdown(
-        f'<div class="news-section-title"><div class="news-section-title-main">Latest Insights</div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
+        f'<div class="news-section-title"><div><div class="news-section-title-main">Latest Insights</div><div style="font-size:12px;color:#64748B;margin-top:3px;">Two stories per row · newest intelligence first</div></div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
         unsafe_allow_html=True,
     )
-    for art in rows:
-        render_insight_card(art)
+
+    # Two editorial cards per row keeps the main feed compact and scannable.
+    for start in range(0, len(rows), 2):
+        row = rows[start:start + 2]
+        cols = st.columns(2, gap="medium")
+        for col, art in zip(cols, row):
+            with col:
+                render_insight_card(art)
 
 
 # 10. MAIN LAYOUT
