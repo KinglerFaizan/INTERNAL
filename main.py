@@ -567,7 +567,7 @@ CATEGORY_COLORS = {
 }
 
 PAGE_SIZE = 100
-MAX_PAGES = 2
+MAX_PAGES = 1
 
 PRAGATI_NAME = "Pragati"
 PRAGATI_TITLE = "Head of Internal Audit"
@@ -832,12 +832,17 @@ def get_api_key():
     if CONFIG_API_KEY.strip():
         return CONFIG_API_KEY.strip()
 
-    env_key = os.getenv("NEWSAPI_KEY", "").strip()
-    if env_key:
-        return env_key
+    for name in ("NEWSAPI_KEY", "NEWS_API_KEY", "API_KEY"):
+        env_key = os.getenv(name, "").strip()
+        if env_key:
+            return env_key
 
     try:
-        secret_key = st.secrets.get("API_KEY", "") or st.secrets.get("NEWSAPI_KEY", "")
+        secret_key = (
+            st.secrets.get("NEWSAPI_KEY", "")
+            or st.secrets.get("NEWS_API_KEY", "")
+            or st.secrets.get("API_KEY", "")
+        )
         if secret_key:
             return str(secret_key).strip()
     except Exception:
@@ -902,11 +907,22 @@ def fetch_query(category, query, api_key, from_date, page_size, page):
         "apiKey": api_key,
     }
 
-    response = requests.get(url, params=params, timeout=25)
-    payload = response.json()
+    params.pop("apiKey", None)
+    response = requests.get(
+        url,
+        params=params,
+        headers={"X-Api-Key": api_key},
+        timeout=25,
+    )
+    try:
+        payload = response.json()
+    except Exception:
+        payload = {}
 
     if payload.get("status") != "ok":
-        raise RuntimeError(payload.get("message", "NewsAPI returned an error."))
+        code = payload.get("code", "")
+        message = payload.get("message", "NewsAPI returned an error.")
+        raise RuntimeError(f"{code}: {message}" if code else message)
 
     articles = payload.get("articles", [])
     for article in articles:
