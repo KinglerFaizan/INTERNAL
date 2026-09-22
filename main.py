@@ -14,6 +14,10 @@ try:
 except ImportError:
     CONFIG_API_KEY = ""
 
+# Paste the NewsAPI key directly here.
+# The app intentionally does not expose an API-key input in the UI.
+NEWSAPI_KEY = "PASTE_YOUR_NEWSAPI_KEY_HERE"
+
 
 # ---------------------------------------------------------
 # 1. APP CONFIGURATION & LIGHT EDITORIAL PALETTE
@@ -61,12 +65,13 @@ st.markdown("""
         border-bottom: 1px solid var(--border);
         margin-bottom: 8px;
     }
-    .topnav-left { display: flex; align-items: center; gap: 18px; }
+    .topnav-left { display: flex; align-items: center; gap: 14px; }
+    .topnav-right { display:flex; align-items:center; gap:20px; }
 
     /* ---- Emblem: deep navy tile, inner bevel, blue rim glow ---- */
     .logo-icon {
         position: relative;
-        width: 62px; height: 62px;
+        width: 54px; height: 54px;
         border-radius: 18px;
         background:
             radial-gradient(120% 120% at 28% 18%, #3B82F6 0%, #1D4ED8 42%, #14264F 100%);
@@ -93,7 +98,7 @@ st.markdown("""
     .logo-textrow { display: flex; align-items: center; gap: 12px; }
     .logo-text {
         font-weight: 900;
-        font-size: 38px;
+        font-size: 30px;
         letter-spacing: -1.5px;
         line-height: 1.02;
         color: #0B1220;
@@ -164,7 +169,7 @@ st.markdown("""
     /* Avatar: object-position keeps the face centred inside the circle
        instead of cropping to the shoulders. */
     .avatar-photo {
-        width: 68px; height: 68px; border-radius: 50%;
+        width: 52px; height: 52px; border-radius: 50%;
         object-fit: cover;
         object-position: center 22%;
         flex-shrink: 0;
@@ -176,7 +181,7 @@ st.markdown("""
         width: 68px; height: 68px; border-radius: 50%;
         background: linear-gradient(135deg, #2563EB, #7C3AED);
         display: flex; align-items: center; justify-content: center;
-        font-weight: 800; font-size: 26px; color: #fff; flex-shrink: 0;
+        font-weight: 800; font-size: 21px; color: #fff; flex-shrink: 0;
         box-shadow: 0 0 0 2px var(--accent-blue);
     }
 
@@ -374,21 +379,59 @@ st.markdown("""
     }
     .featured-meta { font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
     .featured-link-overlay { position: absolute; inset: 0; z-index: 3; }
-    .featured-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin:8px 0 26px; }
-    .featured-tile { position:relative; min-height:245px; border-radius:14px; overflow:hidden; background:#0F172A; box-shadow:0 5px 18px rgba(15,23,42,.10); }
-    .featured-tile-bg { position:absolute; inset:0; background-size:cover; background-position:center; }
-    .featured-tile-overlay { position:absolute; inset:0; background:linear-gradient(180deg,rgba(15,23,42,.04) 15%,rgba(15,23,42,.92) 100%); }
-    .featured-tile-body { position:absolute; left:15px; right:15px; bottom:14px; z-index:2; }
-    .featured-tile-tag { display:inline-block; color:#fff; font-size:9px; font-weight:800; padding:4px 7px; border-radius:4px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px; }
-    .featured-tile-title { color:#fff; font-size:14px; font-weight:750; line-height:1.32; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; text-decoration:none; }
-    .featured-tile-meta { color:rgba(255,255,255,.75); font-size:10px; margin-top:7px; }
-    .featured-rank { position:absolute; top:10px; left:10px; z-index:3; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.92); color:#0F172A; font-size:11px; font-weight:900; }
+    .featured-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin:8px 0 28px; }
+    .featured-tile { position:relative; min-height:382px; border-radius:15px; overflow:hidden; background:#fff; border:1px solid #E5E7EB; box-shadow:0 6px 20px rgba(15,23,42,.07); transition:transform .16s ease, box-shadow .16s ease; }
+    .featured-tile:hover { transform:translateY(-2px); box-shadow:0 10px 28px rgba(15,23,42,.11); }
+    .featured-tile-bg { position:absolute; left:0; right:0; top:0; height:170px; background-size:cover; background-position:center; background-color:#E8EEF8; }
+    .featured-tile-overlay { position:absolute; left:0; right:0; top:138px; height:42px; background:linear-gradient(180deg,rgba(255,255,255,0),#fff); }
+    .featured-tile-body { position:absolute; left:15px; right:15px; top:166px; bottom:14px; z-index:2; display:flex; flex-direction:column; }
+    .featured-tile-tag { display:inline-block; align-self:flex-start; color:#1D4ED8; background:#EEF4FF; border:1px solid #DCE8FF; font-size:9px; font-weight:800; padding:4px 8px; border-radius:999px; text-transform:none; letter-spacing:.1px; margin-bottom:9px; }
+    .featured-tile-title { color:#111827; font-size:15px; font-weight:800; line-height:1.35; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; text-decoration:none; }
+    .featured-tile-title:hover { color:#2563EB; }
+    .featured-tile-meta { color:#6B7280; font-size:10.5px; margin-top:auto; padding-top:8px; }
+    .featured-rank { position:absolute; top:10px; left:10px; z-index:3; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#2563EB; color:#fff; font-size:11px; font-weight:900; box-shadow:0 3px 9px rgba(37,99,235,.3); }
+
+    /* ---------------- Application shell / sidebar ---------------- */
+    [data-testid="stSidebar"] { background:#FFFFFF !important; border-right:1px solid #E5E7EB; }
+    [data-testid="stSidebar"] > div:first-child { padding-top:14px; }
+    [data-testid="stSidebar"] .block-container { padding:10px 14px 24px !important; }
+    .sidebar-shell-brand { display:flex; align-items:center; gap:10px; padding:2px 4px 18px; }
+    .sidebar-shell-icon { width:38px; height:38px; border-radius:11px; background:linear-gradient(145deg,#6D5DF5,#315BEA); color:#fff; display:flex; align-items:center; justify-content:center; font-size:19px; box-shadow:0 5px 14px rgba(49,91,234,.25); }
+    .sidebar-shell-title { font-size:16px; font-weight:900; color:#111827; letter-spacing:-.3px; }
+    .sidebar-shell-title span { color:#2563EB; }
+    .sidebar-nav { display:flex; flex-direction:column; gap:5px; padding-bottom:16px; border-bottom:1px solid #E5E7EB; }
+    .sidebar-nav-item { display:flex; align-items:center; gap:12px; min-height:40px; padding:0 10px; border-radius:10px; color:#5B6678; font-size:12.5px; font-weight:650; }
+    .sidebar-nav-item.active { background:#EAF1FF; color:#2563EB; font-weight:800; }
+    .sidebar-nav-icon { width:18px; text-align:center; font-size:16px; color:#64748B; }
+    .sidebar-nav-item.active .sidebar-nav-icon { color:#2563EB; }
+    .sidebar-status { padding:18px 4px 16px; border-bottom:1px solid #E5E7EB; }
+    .sidebar-kicker { font-size:9.5px; color:#94A3B8; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; }
+    .sidebar-live-row { display:flex; align-items:center; justify-content:space-between; margin-top:9px; }
+    .sidebar-live-left { display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:800; color:#111827; }
+    .sidebar-live-dot { width:8px; height:8px; border-radius:50%; background:#16A34A; }
+    .sidebar-active-pill { background:#DCFCE7; color:#16A34A; border-radius:999px; padding:4px 10px; font-size:10px; font-weight:800; }
+    .sidebar-updated { margin-top:8px; font-size:10.5px; color:#64748B; line-height:1.5; }
+    .sidebar-quick-title { padding:17px 4px 8px; font-size:9.5px; color:#94A3B8; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; }
+    .sidebar-note { font-size:10px; color:#94A3B8; margin:5px 4px 0; line-height:1.45; }
+    .sidebar-filter-label { font-size:10px; color:#64748B; font-weight:700; margin:8px 2px 4px; }
+
+    [data-testid="stSidebar"] .stButton > button { min-height:39px; border-radius:9px; border:1px solid #DCE5F7; background:#F8FAFF; color:#475569 !important; box-shadow:none; font-weight:700; text-align:left; }
+    [data-testid="stSidebar"] .stButton > button:hover { border-color:#BFD1FF; background:#EFF5FF; color:#2563EB !important; }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] { background:#1769F5 !important; border-color:#1769F5 !important; color:#fff !important; box-shadow:0 5px 14px rgba(23,105,245,.22); }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover { background:#1258D5 !important; }
+    [data-testid="stSidebar"] [data-testid="stExpander"] { border:0 !important; background:transparent !important; margin:3px 0 0; }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary { padding:9px 4px !important; background:transparent !important; border:0 !important; font-size:12px !important; font-weight:700 !important; color:#475569 !important; }
+    [data-testid="stSidebar"] [data-testid="stExpanderDetails"] { padding:6px 2px 10px !important; }
+    [data-testid="stSidebar"] .stSlider, [data-testid="stSidebar"] .stMultiSelect { margin-top:4px; }
+    [data-testid="stSidebar"] .stCaption { color:#94A3B8 !important; font-size:9.5px !important; }
+    .top-search { width:320px; height:38px; border:1px solid #E5E7EB; background:#fff; border-radius:999px; display:flex; align-items:center; gap:9px; padding:0 14px; color:#94A3B8; font-size:11px; box-shadow:0 2px 8px rgba(15,23,42,.03); }
+    .top-search-icon { font-size:16px; color:#64748B; }
+    .top-bell { position:relative; font-size:21px; color:#111827; margin-left:2px; }
+    .top-bell-dot { position:absolute; width:7px; height:7px; border-radius:50%; background:#EF4444; right:-2px; top:0; border:1px solid #fff; }
     .news-section-title { display:flex; align-items:center; justify-content:space-between; margin:4px 0 12px; }
     .news-section-title-main { font-size:18px; font-weight:800; color:#0B1220; }
     .news-section-title-sub { font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
-    .sidebar-brand { padding:4px 2px 16px; border-bottom:1px solid #E5E7EB; margin-bottom:14px; }
-    .sidebar-brand-title { font-size:18px; font-weight:900; color:#0B1220; }
-    .sidebar-brand-sub { font-size:10px; color:#6B7280; margin-top:3px; letter-spacing:.8px; text-transform:uppercase; }
+    .sidebar-brand, .sidebar-brand-title, .sidebar-brand-sub { display:none; }
     @media (max-width:1100px) { .featured-strip { grid-template-columns:repeat(3,minmax(0,1fr)); } }
     @media (max-width:700px) { .featured-strip { grid-template-columns:1fr; } }
 
@@ -1361,14 +1404,17 @@ st.markdown(f"""
             <div class="logo-sub"><span class="logo-rule"></span>Global Banking Risk &amp; Controls Briefing</div>
         </div>
     </div>
-    <div class="topnav-user">
-        <div class="topnav-user-meta">
-            <div class="topnav-user-label">Prepared for</div>
-            <div class="topnav-user-name">{PRAGATI_NAME}</div>
-            <div class="topnav-user-title">{PRAGATI_TITLE}</div>
-            <div class="topnav-user-stamp">{ist_now_str()}</div>
+    <div class="topnav-right">
+        <div class="top-search"><span class="top-search-icon">⌕</span><span>Search news, banks, regulation, audit...</span></div>
+        <div class="top-bell">♧<span class="top-bell-dot"></span></div>
+        <div class="topnav-user">
+            <div class="topnav-user-meta">
+                <div class="topnav-user-label">Prepared for</div>
+                <div class="topnav-user-name">{PRAGATI_NAME}</div>
+                <div class="topnav-user-title">{PRAGATI_TITLE}</div>
+            </div>
+            {avatar_html}
         </div>
-        {avatar_html}
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1383,27 +1429,40 @@ hard_refresh = False
 
 with st.sidebar:
     st.markdown("""
-    <div class="sidebar-brand">
-        <div class="sidebar-brand-title">Audit Intelligence</div>
-        <div class="sidebar-brand-sub">Controls · Monitoring · Diagnostics</div>
+    <div class="sidebar-shell-brand">
+        <div class="sidebar-shell-icon">⌁</div>
+        <div class="sidebar-shell-title">Audit <span>Intelligence</span></div>
     </div>
+
+    <div class="sidebar-nav">
+        <div class="sidebar-nav-item active"><span class="sidebar-nav-icon">⌂</span>News Feed</div>
+        <div class="sidebar-nav-item"><span class="sidebar-nav-icon">▦</span>Categories</div>
+        <div class="sidebar-nav-item"><span class="sidebar-nav-icon">♜</span>Global Banks</div>
+        <div class="sidebar-nav-item"><span class="sidebar-nav-icon">♡</span>Watchlist</div>
+        <div class="sidebar-nav-item"><span class="sidebar-nav-icon">▱</span>Saved</div>
+        <div class="sidebar-nav-item"><span class="sidebar-nav-icon">⇩</span>Export</div>
+        <div class="sidebar-nav-item"><span class="sidebar-nav-icon">◉</span>Diagnostics</div>
+    </div>
+
+    <div class="sidebar-status">
+        <div class="sidebar-kicker"><span class="sidebar-live-dot" style="display:inline-block;margin-right:6px;"></span>Live Data</div>
+        <div class="sidebar-live-row">
+            <div class="sidebar-live-left">NewsAPI</div>
+            <div class="sidebar-active-pill">Active</div>
+        </div>
+        <div class="sidebar-updated">Last updated<br>{st.session_state.get("last_refresh", "waiting for first load")}</div>
+    </div>
+
+    <div class="sidebar-quick-title">Quick Controls</div>
     """, unsafe_allow_html=True)
 
-    hard_refresh = st.button("⟲ Refresh All Data", use_container_width=True, key="refresh_all")
-    last_run = st.session_state.get("last_refresh", "not yet loaded this session")
-    st.caption(f"News + market data · {last_run}")
-
+    hard_refresh = st.button("⟳  Refresh All Data", use_container_width=True, type="primary", key="refresh_all")
     if hard_refresh:
         load_news.clear()
         load_market_snapshot.clear()
         st.session_state.pop("news_loaded", None)
 
-    with st.expander("⚙️ Controls", expanded=True):
-        if not api_key:
-            api_key = st.text_input(
-                "NewsAPI Key", type="password", placeholder="Enter API key...",
-                help="Configure NEWSAPI_KEY in Streamlit secrets or environment for a persistent setup.",
-            )
+    with st.expander("⚙  Filters & Settings", expanded=False):
         lookback_days = st.slider("Lookback Window (Days)", 1, 30, 7)
         min_relevance = st.slider("Minimum Audit Relevance", 0, 40, 5, step=5)
         selected_categories = st.multiselect(
@@ -1412,11 +1471,12 @@ with st.sidebar:
             format_func=lambda c: CATEGORY_DISPLAY.get(c, c),
         )
 
-    if api_key:
-        st.markdown('<div style="font-size:11px;color:#16A34A;font-weight:700;margin:8px 0 14px;">● NEWSAPI CONNECTED</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-note">API credentials are embedded in the application code.</div>', unsafe_allow_html=True)
 
-if not api_key:
-    st.info("Use the sidebar to enter your NewsAPI key, or configure NEWSAPI_KEY in Streamlit secrets.")
+api_key = NEWSAPI_KEY.strip()
+if not api_key or api_key == "PASTE_YOUR_NEWSAPI_KEY_HERE":
+    with st.sidebar:
+        st.error("Add your NewsAPI key to NEWSAPI_KEY in main.py.")
     st.stop()
 
 
@@ -1458,34 +1518,12 @@ with st.sidebar:
 # ---------------------------------------------------------
 
 st.markdown(
-    '<div class="news-section-title"><div class="news-section-title-main">Today’s Top Banking News</div><div class="news-section-title-sub">PRIORITY FEED · LIVE</div></div>',
+    '<div class="news-section-title"><div><div class="news-section-title-main" style="font-size:24px;">⚡ Today’s Top Banking News</div><div style="font-size:12px;color:#64748B;margin-top:3px;">Key developments in banking, regulation, risk and technology</div></div><div class="news-section-title-sub">{ist_now_str()}</div></div>',
     unsafe_allow_html=True,
 )
 
 # 9. RENDER HELPERS
 # ---------------------------------------------------------
-
-def render_featured(article):
-    color = CATEGORY_COLORS.get(article["category"], "#374151")
-    label = CATEGORY_DISPLAY.get(article["category"], article["category"])
-    rel_time = format_relative_time(article["publishedAt"])
-
-    if article["image_url"]:
-        bg = f'linear-gradient(180deg, rgba(17,24,39,0) 35%, rgba(17,24,39,0.88) 100%), url(\'{article["image_url"]}\')'
-    else:
-        bg = 'linear-gradient(135deg, #1E3A8A, #2563EB)'
-
-    st.markdown(f"""
-    <div class="featured-hero" style="background-image: {bg};">
-        <div class="featured-badge" style="background: {color};">{label}</div>
-        <div class="featured-text">
-            <div class="featured-title">{article['title']}</div>
-            <div class="featured-meta">By {article['source']} &nbsp;·&nbsp; {rel_time}</div>
-        </div>
-        <a href="{article['url']}" target="_blank" class="featured-link-overlay"></a>
-    </div>
-    """, unsafe_allow_html=True)
-
 
 def render_insight_card(article):
     color = CATEGORY_COLORS.get(article["category"], "#374151")
@@ -1593,6 +1631,7 @@ def render_feed(rows, show_featured=False):
 render_feed(filtered, show_featured=True)
 
 with st.sidebar:
+    st.markdown('<div class="sidebar-filter-label">Live Monitoring</div>', unsafe_allow_html=True)
     render_market_panel()
     render_priority_alerts(filtered)
     render_risk_radar(filtered)
