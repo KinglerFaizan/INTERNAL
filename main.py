@@ -1564,9 +1564,28 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
     unique = {}
     title_keys = set()
 
+    # Reject stale/malformed records that contain the app's own HTML markup.
+    # These can survive provider caches or old Streamlit session state and must
+    # never be allowed back into the newsroom feed.
+    app_markup_tokens = (
+        "<article", "</article>", "insight-card", "insight-title",
+        "insight-desc", "insight-footer", "insight-content",
+    )
+    filtered_articles = []
     for article in all_articles:
-        url = article.get("url") or ""
-        title = (article.get("title") or "").strip().lower()
+        raw_blob = " ".join(
+            str(article.get(field) or "")
+            for field in ("title", "description", "content")
+        ).lower()
+        if any(token in raw_blob for token in app_markup_tokens):
+            continue
+        filtered_articles.append(article)
+
+    all_articles = filtered_articles
+
+    for article in all_articles:
+        url = clean_url(article.get("url"))
+        title = clean_html_text(article.get("title")).strip().lower()
         key = url if url else title
 
         if not key or key in unique or title in title_keys:
@@ -2002,7 +2021,7 @@ if not api_key:
 # 7. DATA INGESTION & FILTERING
 # ---------------------------------------------------------
 
-params_key = ("2026-09-22-newsroom-sanitize-v6", lookback_days, min_relevance)
+params_key = ("2026-09-22-newsroom-sanitize-v7", lookback_days, min_relevance)
 
 if ("news_loaded" not in st.session_state) or (st.session_state.get("params_key") != params_key):
     with st.spinner("Compiling the audit intelligence briefing..."):
