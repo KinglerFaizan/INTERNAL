@@ -1212,10 +1212,67 @@ def normalize_text(article):
     return " ".join(fields).lower()
 
 
+def _term_present(text, term):
+    return bool(re.search(r"(?<![a-z0-9])" + re.escape(term.lower()) + r"(?![a-z0-9])", text.lower()))
+
+
+# A story must contain explicit banking/financial-institution context.
+# This prevents false positives such as consumer products containing the
+# word "bank" (for example, a power bank).
+BANKING_CONTEXT_TERMS = [
+    "banking", "banker", "bankers", "commercial bank", "retail bank",
+    "investment bank", "central bank", "private bank", "public sector bank",
+    "financial institution", "financial institutions", "financial services",
+    "lender", "lenders", "nbfc", "non-bank financial company", "credit union",
+    "deposit", "deposits", "loan", "loans", "mortgage", "payment bank",
+    "rbi", "basel", "capital adequacy", "credit risk", "liquidity",
+    "asset quality", "financial crime", "aml", "kyc", "money laundering",
+    "sanctions", "banking regulator", "bank regulator", "chief risk officer",
+    "chief audit executive", "internal audit", "audit committee",
+    "bank of america", "jpmorgan", "jpmorgan chase", "citigroup", "citi",
+    "hsbc", "barclays", "deutsche bank", "ubs", "bnp paribas", "santander",
+    "standard chartered", "goldman sachs", "morgan stanley", "wells fargo",
+    "icbc", "mufg", "mizuho",
+]
+
+
+def is_directly_banking(article):
+    """Strict banking gate: only retain stories explicitly about banking."""
+    text = normalize_text(article)
+
+    # Never treat a standalone occurrence of "bank" as sufficient.
+    context_hits = sum(1 for term in BANKING_CONTEXT_TERMS if _term_present(text, term))
+
+    named_bank_hits = sum(
+        1 for term in [
+            "bank of america", "jpmorgan", "jpmorgan chase", "citigroup", "citi",
+            "hsbc", "barclays", "deutsche bank", "ubs", "bnp paribas",
+            "santander", "standard chartered", "goldman sachs", "morgan stanley",
+            "wells fargo", "icbc", "mufg", "mizuho",
+        ]
+        if _term_present(text, term)
+    )
+
+    # A generic "bank" is accepted only when another banking-context term
+    # is present. Named banking institutions are direct banking evidence.
+    generic_banking = any(
+        _term_present(text, term)
+        for term in [
+            "banking", "commercial bank", "retail bank", "investment bank",
+            "central bank", "private bank", "public sector bank",
+            "financial institution", "financial institutions", "lender",
+            "lenders", "nbfc", "credit union", "banking regulator",
+            "bank regulator",
+        ]
+    )
+
+    return named_bank_hits > 0 or generic_banking or context_hits >= 2
+
+
 def audit_relevance(text):
     score = 0
     for term in AUDIT_TERMS:
-        if term in text:
+        if _term_present(text, term):
             score += 5
 
     for term in [
@@ -1223,7 +1280,7 @@ def audit_relevance(text):
         "control deficiency", "regulatory enforcement",
         "model risk", "financial crime",
     ]:
-        if term in text:
+        if _term_present(text, term):
             score += 10
 
     return min(score, 100)
@@ -1396,8 +1453,15 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
     cleaned = []
     dropped_low_relevance = 0
 
+    dropped_non_banking = 0
+
     for article in unique.values():
         text = normalize_text(article)
+
+        if not is_directly_banking(article):
+            dropped_non_banking += 1
+            continue
+
         relevance = audit_relevance(text)
 
         if relevance < min_relevance:
@@ -1428,6 +1492,7 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
         "queries_run": len(jobs),
         "raw": raw_count,
         "deduped": deduped_count,
+        "dropped_non_banking": dropped_non_banking,
         "dropped_low_relevance": dropped_low_relevance,
         "kept": len(cleaned),
         "api_total_reported": api_total,
@@ -1815,7 +1880,7 @@ with st.sidebar:
     with st.expander("🔎 Diagnostics", expanded=False):
         if stats:
             st.markdown(
-                f'<div style="font-size:11.5px;color:#374151;line-height:1.9;"><b>Provider:</b> {stats.get("provider","NewsAPI")}<br><b>Requests:</b> {stats.get("queries_run",0)}<br><b>Raw:</b> {stats.get("raw",0)}<br><b>Deduped:</b> {stats.get("deduped",0)}<br><b>Retained:</b> {stats.get("kept",0)}<br><b>Low relevance:</b> {stats.get("dropped_low_relevance",0)}</div>',
+                f'<div style="font-size:11.5px;color:#374151;line-height:1.9;"><b>Provider:</b> {stats.get("provider","NewsAPI")}<br><b>Requests:</b> {stats.get("queries_run",0)}<br><b>Raw:</b> {stats.get("raw",0)}<br><b>Deduped:</b> {stats.get("deduped",0)}<br><b>Non-banking removed:</b> {stats.get("dropped_non_banking",0)}<br><b>Retained:</b> {stats.get("kept",0)}<br><b>Low relevance:</b> {stats.get("dropped_low_relevance",0)}</div>',
                 unsafe_allow_html=True,
             )
         for err in errors[:8]:
@@ -1965,15 +2030,14 @@ def render_feed(rows, show_featured=False):
         render_featured_strip(rows, 4)
 
     st.markdown(
-        f'<div class="news-section-title"><div><div class="news-section-title-main">Latest Intelligence</div><div style="font-size:11px;color:#718096;margin-top:3px;">Five stories per row · newest first</div></div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
+        f'<div class="news-section-title"><div><div class="news-section-title-main">Latest Intelligence</div><div style="font-size:11px;color:#718096;margin-top:3px;">Two stories per row · newest first</div></div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
         unsafe_allow_html=True,
     )
 
-    # Five-card desktop newsroom grid, matching the reference layout.
-    # Streamlit wraps columns on narrow viewports so the feed remains usable.
-    for start in range(0, len(rows), 5):
-        row = rows[start:start + 5]
-        cols = st.columns(5, gap="small", vertical_alignment="top", border=False)
+    # Two editorial cards per row for a clean, readable banking newsroom.
+    for start in range(0, len(rows), 2):
+        row = rows[start:start + 2]
+        cols = st.columns(2, gap="medium", vertical_alignment="top", border=False)
         for col, art in zip(cols, row):
             with col:
                 render_insight_card(art)
