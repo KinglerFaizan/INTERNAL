@@ -536,6 +536,12 @@ CATEGORIES = {
             '("bank" OR "lender") AND ("resigns" OR "steps down" OR "elevated" OR "promoted" OR "succession" OR "board appointment" OR "reshuffle")',
         ]
     },
+    "Cyber & Tech": {
+        "queries": [
+            '("bank" OR "banking") AND (cybersecurity OR "cyber attack" OR ransomware OR "data breach" OR malware OR phishing)',
+            '("bank" OR "banking") AND ("artificial intelligence" OR "machine learning" OR cloud OR automation) AND (risk OR controls OR governance OR fraud)',
+        ]
+    },
     "Global Banks": {
         "queries": [
             '("bank" OR "banking group" OR "financial institution") AND ("audit" OR "internal controls" OR "risk" OR "governance" OR "regulatory") AND ("HSBC" OR "JPMorgan" OR "JPMorgan Chase" OR "Citi" OR "Citigroup" OR "Barclays" OR "Deutsche Bank" OR "UBS" OR "BNP Paribas" OR "Santander" OR "Standard Chartered")',
@@ -550,12 +556,14 @@ CATEGORY_DISPLAY = {
     "Regulation": "Regulation",
     "People": "People",
     "Global Banks": "Global Banking",
+    "Cyber & Tech": "Cyber & Technology",
 }
 CATEGORY_COLORS = {
     "Transformation": "#2563EB",
     "Regulation": "#16A34A",
     "People": "#6B7280",
     "Global Banks": "#7C3AED",
+    "Cyber & Tech": "#0891B2",
 }
 
 PAGE_SIZE = 100
@@ -774,6 +782,11 @@ CATEGORY_TERMS = {
         "appointed", "appointment", "ceo", "cfo", "cro", "ciso", "chief audit",
         "internal audit", "audit committee", "board", "director", "chairman",
         "chairwoman", "leadership", "executive",
+    ],
+    "Cyber & Tech": [
+        "cybersecurity", "cyber security", "cyber attack", "ransomware", "data breach",
+        "malware", "phishing", "technology", "artificial intelligence", "generative ai",
+        "machine learning", "cloud", "automation", "digital fraud",
     ],
     "Global Banks": [
         "hsbc", "jpmorgan", "jpmorgan chase", "citi", "citigroup", "barclays",
