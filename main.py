@@ -1538,13 +1538,11 @@ def priority_score(article):
 def render_featured_strip(rows, limit=5):
     if not rows:
         return
+    today_rows = [a for a in rows if format_relative_time(a["publishedAt"]) == "Today"]
+    source_rows = today_rows if len(today_rows) >= 4 else rows
     ranked = sorted(
-        rows,
-        key=lambda a: (
-            format_relative_time(a["publishedAt"]) == "Today",
-            priority_score(a),
-            a["publishedAt"],
-        ),
+        source_rows,
+        key=lambda a: (priority_score(a), a["publishedAt"]),
         reverse=True,
     )[:limit]
 
