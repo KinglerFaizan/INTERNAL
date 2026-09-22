@@ -23,7 +23,7 @@ st.set_page_config(
     page_title="Audit Intelligence | Global Banking Briefing",
     page_icon="📡",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
@@ -374,6 +374,23 @@ st.markdown("""
     }
     .featured-meta { font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
     .featured-link-overlay { position: absolute; inset: 0; z-index: 3; }
+    .featured-strip { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin:8px 0 26px; }
+    .featured-tile { position:relative; min-height:245px; border-radius:14px; overflow:hidden; background:#0F172A; box-shadow:0 5px 18px rgba(15,23,42,.10); }
+    .featured-tile-bg { position:absolute; inset:0; background-size:cover; background-position:center; }
+    .featured-tile-overlay { position:absolute; inset:0; background:linear-gradient(180deg,rgba(15,23,42,.04) 15%,rgba(15,23,42,.92) 100%); }
+    .featured-tile-body { position:absolute; left:15px; right:15px; bottom:14px; z-index:2; }
+    .featured-tile-tag { display:inline-block; color:#fff; font-size:9px; font-weight:800; padding:4px 7px; border-radius:4px; text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px; }
+    .featured-tile-title { color:#fff; font-size:14px; font-weight:750; line-height:1.32; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; text-decoration:none; }
+    .featured-tile-meta { color:rgba(255,255,255,.75); font-size:10px; margin-top:7px; }
+    .featured-rank { position:absolute; top:10px; left:10px; z-index:3; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.92); color:#0F172A; font-size:11px; font-weight:900; }
+    .news-section-title { display:flex; align-items:center; justify-content:space-between; margin:4px 0 12px; }
+    .news-section-title-main { font-size:18px; font-weight:800; color:#0B1220; }
+    .news-section-title-sub { font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
+    .sidebar-brand { padding:4px 2px 16px; border-bottom:1px solid #E5E7EB; margin-bottom:14px; }
+    .sidebar-brand-title { font-size:18px; font-weight:900; color:#0B1220; }
+    .sidebar-brand-sub { font-size:10px; color:#6B7280; margin-top:3px; letter-spacing:.8px; text-transform:uppercase; }
+    @media (max-width:1100px) { .featured-strip { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+    @media (max-width:700px) { .featured-strip { grid-template-columns:1fr; } }
 
     /* ---------------- Insight cards ---------------- */
     .insight-card {
@@ -1358,16 +1375,14 @@ st.markdown(f"""
 
 
 # ---------------------------------------------------------
-# 5. ACTION BAR — one button refreshes BOTH news and markets
+# 5. ACTION BAR + SIDEBAR CONTROLS
 # ---------------------------------------------------------
 
 api_key = get_api_key()
 
 act_l, act_r = st.columns([1, 4])
-
 with act_l:
     hard_refresh = st.button("⟲  Refresh All Data", use_container_width=True, key="refresh_all")
-
 with act_r:
     last_run = st.session_state.get("last_refresh", "not yet loaded this session")
     st.markdown(
@@ -1380,45 +1395,36 @@ if hard_refresh:
     load_market_snapshot.clear()
     st.session_state.pop("news_loaded", None)
 
+with st.sidebar:
+    st.markdown("""
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-title">Audit Intelligence</div>
+        <div class="sidebar-brand-sub">Controls · Monitoring · Diagnostics</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 6. DATA CONTROLS
-# ---------------------------------------------------------
-
-with st.expander("⚙️  Advanced Filters & Data Controls", expanded=(not api_key)):
-    if not api_key:
-        api_key = st.text_input(
-            "NewsAPI Key",
-            type="password",
-            placeholder="Enter API key...",
-            help="Configurable via secrets.toml or config.py for a persistent setup.",
+    with st.expander("⚙️ Controls", expanded=True):
+        if not api_key:
+            api_key = st.text_input(
+                "NewsAPI Key", type="password", placeholder="Enter API key...",
+                help="Configure NEWSAPI_KEY in Streamlit secrets or environment for a persistent setup.",
+            )
+        lookback_days = st.slider("Lookback Window (Days)", 1, 30, 7)
+        min_relevance = st.slider("Minimum Audit Relevance", 0, 40, 5, step=5)
+        selected_categories = st.multiselect(
+            "Active Categories", options=list(CATEGORIES.keys()),
+            default=list(CATEGORIES.keys()),
+            format_func=lambda c: CATEGORY_DISPLAY.get(c, c),
         )
 
-    ctrl_a, ctrl_b = st.columns(2)
-
-    with ctrl_a:
-        lookback_days = st.slider("Lookback Window (Days)", min_value=1, max_value=30, value=7)
-
-    with ctrl_b:
-        min_relevance = st.slider(
-            "Minimum Audit Relevance",
-            min_value=0, max_value=40, value=5, step=5,
-            help="Lower this to widen the feed; raise it to keep only high-signal stories.",
-        )
-
-    selected_categories = st.multiselect(
-        "Active Categories",
-        options=list(CATEGORIES.keys()),
-        default=list(CATEGORIES.keys()),
-        format_func=lambda c: CATEGORY_DISPLAY.get(c, c),
-    )
+    if api_key:
+        st.markdown('<div style="font-size:11px;color:#16A34A;font-weight:700;margin:8px 0 14px;">● NEWSAPI CONNECTED</div>', unsafe_allow_html=True)
 
 if not api_key:
-    st.info("💡 Please enter your NewsAPI key above (or configure API_KEY in Streamlit secrets) to load the briefing.")
+    st.info("Use the sidebar to enter your NewsAPI key, or configure NEWSAPI_KEY in Streamlit secrets.")
     st.stop()
 
 
-# ---------------------------------------------------------
 # 7. DATA INGESTION & FILTERING
 # ---------------------------------------------------------
 
@@ -1441,27 +1447,15 @@ stats = st.session_state.get("news_stats", {})
 
 filtered = [a for a in articles if a["category"] in selected_categories] if selected_categories else []
 
-with st.expander("🔎 Ingestion Diagnostics", expanded=False):
-    if stats:
-        st.markdown(
-            f"""
-            <div style="font-size:12.5px; color:#111827; line-height:1.9;">
-            <b>{stats['queries_run']}</b> query/page requests sent ·
-            <b>{stats['raw']}</b> articles returned by NewsAPI ·
-            <b>{stats['deduped']}</b> after de-duplication ·
-            <b>{stats['dropped_low_relevance']}</b> dropped below the relevance floor ·
-            <b>{stats['kept']}</b> retained in the briefing
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.caption(
-            "If 'retained' is low, lower the Minimum Audit Relevance slider or widen the "
-            "lookback window. NewsAPI's free tier also caps each query at 100 results and "
-            "roughly one month of history."
-        )
-    for err in errors:
-        st.markdown(f"<div style='font-size:12px; color:#B45309;'>• {err}</div>", unsafe_allow_html=True)
+with st.sidebar:
+    with st.expander("🔎 Diagnostics", expanded=False):
+        if stats:
+            st.markdown(
+                f'<div style="font-size:11.5px;color:#374151;line-height:1.9;"><b>Provider:</b> {stats.get("provider","NewsAPI")}<br><b>Requests:</b> {stats.get("queries_run",0)}<br><b>Raw:</b> {stats.get("raw",0)}<br><b>Deduped:</b> {stats.get("deduped",0)}<br><b>Retained:</b> {stats.get("kept",0)}<br><b>Low relevance:</b> {stats.get("dropped_low_relevance",0)}</div>',
+                unsafe_allow_html=True,
+            )
+        for err in errors[:8]:
+            st.markdown(f"<div style='font-size:11px;color:#B45309;margin-top:4px;'>• {err}</div>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
