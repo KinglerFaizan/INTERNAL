@@ -1379,21 +1379,7 @@ st.markdown(f"""
 # ---------------------------------------------------------
 
 api_key = get_api_key()
-
-act_l, act_r = st.columns([1, 4])
-with act_l:
-    hard_refresh = st.button("⟲  Refresh All Data", use_container_width=True, key="refresh_all")
-with act_r:
-    last_run = st.session_state.get("last_refresh", "not yet loaded this session")
-    st.markdown(
-        f'<div class="action-caption">News + market data · last pulled: {last_run}</div>',
-        unsafe_allow_html=True,
-    )
-
-if hard_refresh:
-    load_news.clear()
-    load_market_snapshot.clear()
-    st.session_state.pop("news_loaded", None)
+hard_refresh = False
 
 with st.sidebar:
     st.markdown("""
@@ -1402,6 +1388,15 @@ with st.sidebar:
         <div class="sidebar-brand-sub">Controls · Monitoring · Diagnostics</div>
     </div>
     """, unsafe_allow_html=True)
+
+    hard_refresh = st.button("⟲ Refresh All Data", use_container_width=True, key="refresh_all")
+    last_run = st.session_state.get("last_refresh", "not yet loaded this session")
+    st.caption(f"News + market data · {last_run}")
+
+    if hard_refresh:
+        load_news.clear()
+        load_market_snapshot.clear()
+        st.session_state.pop("news_loaded", None)
 
     with st.expander("⚙️ Controls", expanded=True):
         if not api_key:
