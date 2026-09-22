@@ -397,7 +397,7 @@ st.markdown("""
     /* ---------------- Enterprise featured briefing ---------------- */
     .featured-carousel {
         position:relative;
-        height:360px;
+        height:270px;
         margin:10px 0 28px;
         border:1px solid #D9E0EA;
         border-radius:8px;
@@ -443,7 +443,7 @@ st.markdown("""
         display:flex;
         flex-direction:column;
         justify-content:center;
-        padding:34px 20px 34px 0;
+        padding:28px 20px 28px 0;
     }
     .featured-slide-kicker {
         display:flex;
@@ -477,7 +477,7 @@ st.markdown("""
     }
     .featured-slide-title {
         color:#FFFFFF;
-        font-size:28px;
+        font-size:27px;
         font-weight:750;
         line-height:1.24;
         letter-spacing:-.35px;
@@ -490,8 +490,8 @@ st.markdown("""
     }
     .featured-slide-title:hover { color:#DCE9FA; }
     .featured-slide-meta {
-        color:#AAB8C9;
-        font-size:11px;
+        color:#C2CEDD;
+        font-size:12px;
         margin-top:18px;
         font-weight:500;
         letter-spacing:.15px;
@@ -575,14 +575,14 @@ st.markdown("""
         margin:4px 0 8px;
     }
     .main-category-row [data-testid="stButton"] > button {
-        min-height:42px !important;
+        min-height:46px !important;
         border-radius:9px !important;
         border:1px solid #D6DEE9 !important;
         background:#FFFFFF !important;
         color:#13213A !important;
         box-shadow:0 1px 2px rgba(15,23,42,.025) !important;
-        font-weight:700 !important;
-        font-size:12px !important;
+        font-weight:800 !important;
+        font-size:13px !important;
         padding:8px 10px !important;
     }
     .main-category-row [data-testid="stButton"] > button:hover {
@@ -599,6 +599,20 @@ st.markdown("""
     .main-category-row [data-testid="stButton"] > button[kind="primary"] * {
         color:#FFFFFF !important;
         -webkit-text-fill-color:#FFFFFF !important;
+    }
+
+    /* Category controls are rendered directly by Streamlit columns. */
+    div[data-testid="column"] [data-testid="stButton"] > button {
+        min-height:46px !important;
+        border-radius:10px !important;
+        font-size:13px !important;
+        font-weight:800 !important;
+        letter-spacing:.05px !important;
+    }
+    div[data-testid="column"] [data-testid="stButton"] > button[kind="primary"] {
+        background:#1769F5 !important;
+        border-color:#1769F5 !important;
+        box-shadow:0 7px 18px rgba(37,99,235,.18) !important;
     }
     .sidebar-category-btn [data-testid="stButton"] > button {
         text-align:left !important;
@@ -638,8 +652,8 @@ st.markdown("""
     .top-bell { position:relative; font-size:21px; color:#111827; margin-left:2px; }
     .top-bell-dot { position:absolute; width:7px; height:7px; border-radius:50%; background:#EF4444; right:-2px; top:0; border:1px solid #fff; }
     .news-section-title { display:flex; align-items:center; justify-content:space-between; margin:4px 0 12px; }
-    .news-section-title-main { font-size:18px; font-weight:800; color:#0B1220; }
-    .news-section-title-sub { font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
+    .news-section-title-main { font-size:24px; font-weight:900; color:#12244A; letter-spacing:-.5px; }
+    .news-section-title-sub { font-size:11px; color:#718096; font-family:'JetBrains Mono',monospace; font-weight:600; }
     .sidebar-brand, .sidebar-brand-title, .sidebar-brand-sub { display:none; }
     @media (max-width:900px) {
         .featured-carousel { height:420px; }
@@ -654,38 +668,40 @@ st.markdown("""
         .featured-progress { left:20px; right:20px; }
     }
 
-    /* ---------------- News-site card grid ---------------- */
+    /* ---------------- Editorial banking newsroom cards ---------------- */
     .insight-card {
         display:flex;
-        flex-direction:column;
-        gap:10px;
-        min-height:360px;
+        flex-direction:row;
+        align-items:stretch;
+        gap:20px;
+        min-height:238px;
         height:100%;
         background:#FFFFFF;
-        border:1px solid #E2E8F0;
-        border-radius:12px;
+        border:1px solid #DCE4EF;
+        border-radius:16px;
         padding:10px;
-        margin-bottom:16px;
-        transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
-        box-shadow:0 2px 8px rgba(15,23,42,.045);
+        margin-bottom:18px;
+        transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+        box-shadow:0 4px 14px rgba(15,23,42,.055);
         overflow:hidden;
     }
     .insight-card:hover {
-        transform:translateY(-2px);
-        border-color:#C9D7EE;
-        box-shadow:0 10px 24px rgba(15,23,42,.09);
+        transform:translateY(-3px);
+        border-color:#B8C9E3;
+        box-shadow:0 14px 32px rgba(15,23,42,.11);
     }
     .insight-thumb {
-        width:100%;
-        min-width:0;
-        height:142px;
-        border-radius:9px;
+        width:42%;
+        min-width:42%;
+        height:auto;
+        min-height:216px;
+        border-radius:11px;
         object-fit:cover;
-        background-color:#EEF2F7;
+        background-color:#EEF3F9;
         background-repeat:no-repeat;
         background-position:center;
-        background-size:52px 52px;
-        border:1px solid #E1E6EC;
+        background-size:54px 54px;
+        border:1px solid #E1E7F0;
         display:block;
         flex-shrink:0;
     }
@@ -694,82 +710,124 @@ st.markdown("""
         flex-direction:column;
         min-width:0;
         flex:1;
-        padding:0 2px 2px;
+        padding:8px 8px 6px 0;
     }
     .insight-meta-row {
         display:flex;
         align-items:center;
-        gap:8px;
-        margin-bottom:7px;
+        gap:10px;
+        margin-bottom:9px;
     }
     .badge {
-        display:inline-block;
-        color:#35506F !important;
-        background:#F1F5F9 !important;
-        border:1px solid #D8E0E9;
-        font-size:8.5px;
-        font-weight:800;
-        padding:3px 6px;
-        border-radius:3px;
+        display:inline-flex;
+        align-items:center;
+        color:#1769E8 !important;
+        background:#E8F1FF !important;
+        border:1px solid #C9DDFD;
+        font-size:9.5px;
+        font-weight:900;
+        padding:4px 8px;
+        border-radius:999px;
         text-transform:uppercase;
-        letter-spacing:.65px;
+        letter-spacing:.7px;
     }
     .insight-date {
-        font-size:10px;
-        color:#7A8797;
-        font-weight:500;
+        font-size:11px;
+        color:#718096;
+        font-weight:600;
     }
     .insight-title-link { text-decoration:none; }
     .insight-title {
-        font-size:14.5px;
-        font-weight:750;
-        color:#172033;
-        line-height:1.36;
-        margin-bottom:5px;
+        font-size:19px;
+        font-weight:900;
+        color:#12244A;
+        line-height:1.22;
+        letter-spacing:-.45px;
+        margin-bottom:8px;
         display:-webkit-box;
         -webkit-line-clamp:3;
         -webkit-box-orient:vertical;
         overflow:hidden;
     }
-    .insight-title-link:hover .insight-title { color:#1D4ED8; }
+    .insight-title-link:hover .insight-title { color:#1769E8; }
     .insight-desc {
-        font-size:11.5px;
-        color:#687587;
-        line-height:1.45;
-        margin-bottom:7px;
+        font-size:13px;
+        color:#64748B;
+        line-height:1.48;
+        margin-bottom:10px;
         display:-webkit-box;
-        -webkit-line-clamp:2;
+        -webkit-line-clamp:3;
         -webkit-box-orient:vertical;
         overflow:hidden;
     }
     .insight-footer {
         display:flex;
-        justify-content:flex-start;
+        justify-content:space-between;
         align-items:center;
+        gap:10px;
         margin-top:auto;
+        padding-top:8px;
+        border-top:1px solid #EEF2F7;
     }
-    .read-link {
-        font-size:10.5px;
-        font-weight:750;
+    .insight-source {
+        display:flex;
+        align-items:center;
+        gap:7px;
+        min-width:0;
+        color:#1F2F49;
+        font-size:11px;
+        font-weight:800;
+    }
+    .insight-source-name {
+        max-width:145px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+        white-space:nowrap;
+    }
+    .insight-source-time {
+        color:#8A97AA;
+        font-weight:600;
+    }
+    .insight-bookmark {
+        width:28px;
+        height:28px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border:1px solid #D8E1ED;
+        border-radius:8px;
+        color:#5B6B82;
+        font-size:16px;
+        flex-shrink:0;
+        background:#FFFFFF;
+    }
+    .insight-bookmark:hover {
         color:#2563EB;
-        text-decoration:none;
+        border-color:#AFC6F2;
+        background:#F6F9FF;
     }
-    .read-link:hover { text-decoration:underline; }
 
-    @media (max-width:1050px) {
-        .featured-slide-bg { width:46%; }
-        .featured-slide-content { width:68%; left:28px; }
-        .featured-progress { left:28px; right:28px; }
+    @media (max-width:900px) {
+        .insight-card { gap:14px; min-height:220px; }
+        .insight-thumb { min-height:198px; }
+        .insight-title { font-size:17px; }
+        .insight-desc { font-size:12px; }
     }
     @media (max-width:700px) {
-        .featured-carousel { height:400px; }
-        .featured-slide-bg { width:100%; }
-        .featured-slide-bg::after { background:linear-gradient(90deg,rgba(11,23,40,.94),rgba(11,23,40,.70)); }
-        .featured-slide-content { width:auto; left:22px; right:22px; padding-right:0; }
-        .featured-slide-title { font-size:23px; }
-        .featured-progress { left:22px; right:22px; }
-        .insight-card { min-height:0; }
-        .insight-thumb { width:112px; min-width:112px; height:100px; }
+        .insight-card {
+            flex-direction:column;
+            min-height:0;
+            gap:10px;
+        }
+        .insight-thumb {
+            width:100%;
+            min-width:0;
+            height:180px;
+            min-height:180px;
+        }
+        .insight-content { padding:2px 4px 4px; }
+        .insight-title { font-size:18px; }
+        .insight-desc { font-size:12.5px; }
     }
 
     /* ---------------- Right sidebar panels ---------------- */
@@ -1922,39 +1980,53 @@ for _col, (_cat_key, _cat_label) in zip(_category_cols, _category_options):
 # ---------------------------------------------------------
 
 def render_insight_card(article):
-    color = CATEGORY_COLORS.get(article["category"], "#374151")
+    color = CATEGORY_COLORS.get(article["category"], "#2563EB")
     label = CATEGORY_DISPLAY.get(article["category"], article["category"])
     rel_time = format_relative_time(article["publishedAt"])
-    description_text = article["description"] or "Independent institutional briefing coverage. Select below to review the full verified source documentation."
+    description_text = article["description"] or "Independent institutional briefing coverage. Select the source to review the full verified story."
 
     fallback = placeholder_data_uri(color)
-    src_attr = f'src="{article["image_url"]}" ' if article["image_url"] else ""
-
-    thumb_html = (
-        f'<img class="insight-thumb" {src_attr}alt="" loading="lazy" '
-        f'referrerpolicy="no-referrer" '
-        f'style="background-image: url(&quot;{fallback}&quot;);" '
-        f'onerror="this.onerror=null; this.removeAttribute(\'src\');" />'
-    )
+    image_url = article.get("image_url") or fallback
+    # If a publisher blocks hotlinking, fall back to the generated category placeholder.
+    safe_image = image_url.replace("&", "&amp;").replace('"', "&quot;")
+    source_name = (article.get("source") or "Verified source").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    title = (article.get("title") or "Untitled").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    description_text = description_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     st.markdown(f"""
-    <div class="insight-card">
-        {thumb_html}
+    <article class="insight-card">
+        <img
+            class="insight-thumb"
+            src="{safe_image}"
+            alt=""
+            loading="lazy"
+            referrerpolicy="no-referrer"
+            onerror="this.onerror=null;this.src='{fallback}';"
+        />
         <div class="insight-content">
             <div class="insight-meta-row">
-                <span class="badge" style="background: {color};">{label}</span>
+                <span class="badge" style="color:#1769E8 !important;">{label}</span>
                 <span class="insight-date">{rel_time}</span>
             </div>
+
             <a href="{article['url']}" target="_blank" class="insight-title-link">
-                <div class="insight-title">{article['title']}</div>
+                <div class="insight-title">{title}</div>
             </a>
+
             <div class="insight-desc">{description_text}</div>
+
             <div class="insight-footer">
-                <a href="{article['url']}" target="_blank" class="read-link">Read source ↗</a>
+                <div class="insight-source">
+                    <span class="insight-source-name">{source_name}</span>
+                    <span aria-hidden="true">·</span>
+                    <span class="insight-source-time">{rel_time}</span>
+                </div>
+                <a href="{article['url']}" target="_blank" class="insight-bookmark" aria-label="Open source">↗</a>
             </div>
         </div>
-    </div>
+    </article>
     """, unsafe_allow_html=True)
+
 
 
 def priority_score(article):
