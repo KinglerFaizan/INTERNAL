@@ -1600,6 +1600,21 @@ def render_feed(rows, show_featured=False):
 render_feed(filtered, show_featured=True)
 
 with st.sidebar:
+    render_market_panel()
+    render_priority_alerts(filtered)
+    render_risk_radar(filtered)
+    render_source_panel(filtered)
+
+    with st.expander("🎛️ Active Filters", expanded=False):
+        active_categories = ", ".join(CATEGORY_DISPLAY.get(c, c) for c in selected_categories) or "None selected"
+        st.markdown(
+            f'<div style="font-size:11.5px;line-height:1.9;color:#374151;">'
+            f'<b>Categories:</b> {active_categories}<br>'
+            f'<b>Lookback:</b> Last {lookback_days}d<br>'
+            f'<b>Relevance floor:</b> {min_relevance}</div>',
+            unsafe_allow_html=True,
+        )
+
     with st.expander("📊 Feed Pulse", expanded=False):
         today_count = sum(1 for a in filtered if format_relative_time(a["publishedAt"]) == "Today")
         unique_sources = len(set(a["source"] for a in filtered))
