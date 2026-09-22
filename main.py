@@ -2,6 +2,8 @@ import os
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import re
+import xml.etree.ElementTree as ET
 
 import pandas as pd
 import requests
@@ -931,6 +933,41 @@ def fetch_query(category, query, api_key, from_date, page_size, page):
     return articles, payload.get("totalResults", 0)
 
 
+def fetch_google_rss(category, query, lookback_days):
+    """Public fallback used only when NewsAPI returns no usable stories."""
+    rss_query = f"{query} when:{max(1, min(30, int(lookback_days)))}d"
+    response = requests.get(
+        "https://news.google.com/rss/search",
+        params={"q": rss_query, "hl": "en-IN", "gl": "IN", "ceid": "IN:en"},
+        headers={"User-Agent": "Mozilla/5.0 Audit-Intelligence/1.0"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    root = ET.fromstring(response.content)
+    rows = []
+    for item in root.findall("./channel/item"):
+        title = (item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
+        if not title or not link or title.lower().startswith("[removed]"):
+            continue
+        description = re.sub(r"<[^>]+>", " ", item.findtext("description") or "")
+        description = re.sub(r"\\s+", " ", description).strip()
+        source_node = item.find("source")
+        source = (source_node.text or "").strip() if source_node is not None else ""
+        rows.append({
+            "title": title,
+            "description": description,
+            "content": "",
+            "url": link,
+            "urlToImage": "",
+            "source": {"name": source or "Google News"},
+            "publishedAt": (item.findtext("pubDate") or "").strip(),
+            "author": "",
+            "_query_category": category,
+        })
+    return rows
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def load_news(api_key, lookback_days, page_size, min_relevance):
     from_date = (
@@ -967,6 +1004,25 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
                 errors.append(f"{category} (page {page}): {msg}")
 
     raw_count = len(all_articles)
+    fallback_used = False
+    fallback_errors = []
+
+    if raw_count == 0:
+        fallback_used = True
+        rss_jobs = [(category, query) for category, settings in CATEGORIES.items() for query in settings["queries"]]
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {
+                executor.submit(fetch_google_rss, category, query, lookback_days): (category, query)
+                for category, query in rss_jobs
+            }
+            for future in as_completed(futures):
+                category, query = futures[future]
+                try:
+                    all_articles.extend(future.result())
+                except Exception as exc:
+                    fallback_errors.append(f"{category}: {exc}")
+        errors.extend([f"Google News RSS fallback: {msg}" for msg in fallback_errors[:5]])
+        raw_count = len(all_articles)
 
     unique = {}
     title_keys = set()
@@ -1025,6 +1081,9 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
         "dropped_low_relevance": dropped_low_relevance,
         "kept": len(cleaned),
         "api_total_reported": api_total,
+        "provider": "Google News RSS (fallback)" if fallback_used else "NewsAPI",
+        "fallback_used": fallback_used,
+        "fallback_errors": len(fallback_errors),
     }
     return cleaned, errors, stats
 
