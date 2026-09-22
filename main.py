@@ -1356,7 +1356,7 @@ def normalize_text(article):
         article.get("description") or "",
         article.get("content") or "",
     ]
-    return " ".join(str(field) for field in fields).lower()
+    return clean_html_text(" ".join(str(field) for field in fields)).lower()
 
 
 def is_directly_banking(article):
@@ -1995,7 +1995,7 @@ if not api_key:
 # 7. DATA INGESTION & FILTERING
 # ---------------------------------------------------------
 
-params_key = ("2026-09-22-newsroom-sanitize-v4", lookback_days, min_relevance)
+params_key = ("2026-09-22-newsroom-sanitize-v5", lookback_days, min_relevance)
 
 if ("news_loaded" not in st.session_state) or (st.session_state.get("params_key") != params_key):
     with st.spinner("Compiling the audit intelligence briefing..."):
@@ -2243,7 +2243,7 @@ with st.sidebar:
             st.download_button(
                 "Download Briefing CSV",
                 data=csv,
-                file_name=f"audit_intel_briefing_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.csv",
+                file_name=f"audit_intel_briefing_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.csv",
                 mime="text/csv",
                 use_container_width=True,
                 key="download_csv_sidebar",
