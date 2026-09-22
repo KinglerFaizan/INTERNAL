@@ -1273,12 +1273,19 @@ def get_api_key():
 
 def clean_html_text(value, fallback=""):
     """Convert scraped HTML fragments into safe, readable plain text."""
-    value = html.unescape(str(value or ""))
-    value = re.sub(r"<script\\b[^>]*>.*?</script>", " ", value, flags=re.I | re.S)
-    value = re.sub(r"<style\\b[^>]*>.*?</style>", " ", value, flags=re.I | re.S)
-    value = re.sub(r"<[^>]+>", " ", value)
+    value = str(value or "")
+    # Some feeds can double-escape HTML. Unescape and strip repeatedly so
+    # markup can never leak into the rendered newsroom cards.
+    for _ in range(3):
+        decoded = html.unescape(value)
+        decoded = re.sub(r"<script\b[^>]*>.*?</script>", " ", decoded, flags=re.I | re.S)
+        decoded = re.sub(r"<style\b[^>]*>.*?</style>", " ", decoded, flags=re.I | re.S)
+        decoded = re.sub(r"<[^>]+>", " ", decoded)
+        if decoded == value:
+            break
+        value = decoded
     value = html.unescape(value)
-    value = re.sub(r"\\s+", " ", value).strip()
+    value = re.sub(r"\s+", " ", value).strip()
     return value or fallback
 
 
@@ -1995,7 +2002,7 @@ if not api_key:
 # 7. DATA INGESTION & FILTERING
 # ---------------------------------------------------------
 
-params_key = ("2026-09-22-newsroom-sanitize-v5", lookback_days, min_relevance)
+params_key = ("2026-09-22-newsroom-sanitize-v6", lookback_days, min_relevance)
 
 if ("news_loaded" not in st.session_state) or (st.session_state.get("params_key") != params_key):
     with st.spinner("Compiling the audit intelligence briefing..."):
