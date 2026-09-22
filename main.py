@@ -14,9 +14,9 @@ try:
 except ImportError:
     CONFIG_API_KEY = ""
 
-# Paste the NewsAPI key directly here.
-# The app intentionally does not expose an API-key input in the UI.
-NEWSAPI_KEY = "PASTE_YOUR_NEWSAPI_KEY_HERE"
+# NewsAPI credentials are resolved from config.py, environment variables, or
+# Streamlit secrets. No credential is rendered in the UI or committed here.
+NEWSAPI_KEY = ""
 
 
 # ---------------------------------------------------------
@@ -1418,7 +1418,7 @@ st.markdown(f"""
 # 5. ACTION BAR + SIDEBAR CONTROLS
 # ---------------------------------------------------------
 
-api_key = NEWSAPI_KEY.strip()
+api_key = (NEWSAPI_KEY.strip() or get_api_key().strip())
 hard_refresh = False
 
 with st.sidebar:
@@ -1465,11 +1465,12 @@ with st.sidebar:
             format_func=lambda c: CATEGORY_DISPLAY.get(c, c),
         )
 
-    st.markdown('<div class="sidebar-note">API credentials are embedded in the application code.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-note">NewsAPI is configured server-side. Credentials are never displayed here.</div>', unsafe_allow_html=True)
 
-if not api_key or api_key == "PASTE_YOUR_NEWSAPI_KEY_HERE":
+if not api_key:
     with st.sidebar:
-        st.error("Add your NewsAPI key to NEWSAPI_KEY in main.py.")
+        st.error("NewsAPI is not configured.")
+        st.caption("Configure NEWSAPI_KEY in Streamlit secrets, an environment variable, or config.py.")
     st.stop()
 
 
