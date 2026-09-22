@@ -1459,17 +1459,14 @@ with st.sidebar:
 
 
 # ---------------------------------------------------------
-# 8. PAGE TITLE
+# 8. TOP NEWS AREA
 # ---------------------------------------------------------
 
-st.markdown('<div class="page-title">This week\'s briefing</div>', unsafe_allow_html=True)
 st.markdown(
-    f'<div class="page-subtitle">{len(filtered)} items &nbsp;·&nbsp; verified banking internal controls &amp; regulatory surveillance</div>',
+    '<div class="news-section-title"><div class="news-section-title-main">Today’s Top Banking News</div><div class="news-section-title-sub">PRIORITY FEED · LIVE</div></div>',
     unsafe_allow_html=True,
 )
 
-
-# ---------------------------------------------------------
 # 9. RENDER HELPERS
 # ---------------------------------------------------------
 
@@ -1531,101 +1528,101 @@ def render_insight_card(article):
     """, unsafe_allow_html=True)
 
 
-def render_feed(rows, show_featured=True):
+def priority_score(article):
+    text = f'{article["title"]} {article["description"]}'.lower()
+    alert_hits = sum(1 for term in ALERT_TERMS if term in text)
+    cyber_hits = sum(1 for term in CATEGORY_TERMS.get("Cyber & Tech", []) if term in text)
+    return article.get("audit_relevance", 0) + (alert_hits * 8) + (cyber_hits * 2)
+
+
+def render_featured_strip(rows, limit=5):
+    if not rows:
+        return
+    ranked = sorted(
+        rows,
+        key=lambda a: (
+            format_relative_time(a["publishedAt"]) == "Today",
+            priority_score(a),
+            a["publishedAt"],
+        ),
+        reverse=True,
+    )[:limit]
+
+    cards = []
+    for idx, article in enumerate(ranked, 1):
+        color = CATEGORY_COLORS.get(article["category"], "#2563EB")
+        label = CATEGORY_DISPLAY.get(article["category"], article["category"])
+        title = (article["title"] or "Untitled").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        source = (article["source"] or "Source").replace("&", "&amp;")
+        image = article.get("image_url") or ""
+        bg = f"url('{image}')" if image else "linear-gradient(135deg,#1E3A8A,#2563EB)"
+        cards.append(
+            f'<div class="featured-tile">'
+            f'<div class="featured-tile-bg" style="background-image:{bg};"></div>'
+            f'<div class="featured-tile-overlay"></div>'
+            f'<div class="featured-rank">{idx}</div>'
+            f'<div class="featured-tile-body">'
+            f'<span class="featured-tile-tag" style="background:{color};">{label}</span>'
+            f'<a class="featured-tile-title" href="{article["url"]}" target="_blank">{title}</a>'
+            f'<div class="featured-tile-meta">{source} · {format_relative_time(article["publishedAt"])}</div>'
+            f'</div></div>'
+        )
+
+    st.markdown('<div class="featured-strip">' + ''.join(cards) + '</div>', unsafe_allow_html=True)
+
+
+def render_feed(rows, show_featured=False):
     if not rows:
         st.markdown("""
         <div class="empty-state-panel">
-            <div style="font-size: 18px; font-weight: 700; color: #111827;">No briefing stories found</div>
-            <div style="font-size: 13.5px; color: #4B5563; margin-top: 6px;">Try expanding the lookback window or lowering the relevance floor above.</div>
+            <div style="font-size:18px;font-weight:700;color:#111827;">No briefing stories found</div>
+            <div style="font-size:13.5px;color:#4B5563;margin-top:6px;">Try expanding the lookback window or lowering the relevance floor in the sidebar.</div>
         </div>
         """, unsafe_allow_html=True)
         return
 
     if show_featured:
-        st.markdown('<div class="section-heading">Featured Analysis</div>', unsafe_allow_html=True)
-        render_featured(rows[0])
-        rest = rows[1:]
-    else:
-        rest = rows
+        render_featured_strip(rows, 5)
 
-    if rest:
-        st.markdown('<div class="section-heading">Latest Insights</div>', unsafe_allow_html=True)
-        for art in rest:
-            render_insight_card(art)
+    st.markdown(
+        f'<div class="news-section-title"><div class="news-section-title-main">Latest Insights</div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
+        unsafe_allow_html=True,
+    )
+    for art in rows:
+        render_insight_card(art)
 
 
-# ---------------------------------------------------------
 # 10. MAIN LAYOUT
 # ---------------------------------------------------------
 
-col_main, col_side = st.columns([2.3, 1], gap="large")
+# News is deliberately the first major content block so the opening viewport
+# feels like a news product rather than a configuration dashboard.
+render_feed(filtered, show_featured=True)
 
-with col_main:
-    if not filtered:
-        render_feed(filtered)
-    else:
-        tab_labels = ["All Insights"] + [CATEGORY_DISPLAY.get(c, c) for c in selected_categories]
-        tabs = st.tabs(tab_labels)
-
-        with tabs[0]:
-            render_feed(filtered, show_featured=True)
-
-        for tab, category in zip(tabs[1:], selected_categories):
-            with tab:
-                cat_rows = [a for a in filtered if a["category"] == category]
-                render_feed(cat_rows, show_featured=False)
-
-with col_side:
-    render_market_panel()
-    render_priority_alerts(filtered)
-    render_risk_radar(filtered)
-    render_source_panel(filtered)
-
-    active_categories = ", ".join(CATEGORY_DISPLAY.get(c, c) for c in selected_categories) or "None selected"
-    st.markdown(f"""
-    <div class="side-panel">
-        <div class="side-panel-title">⚙️ Active Filters</div>
-        <div class="filter-row"><span>Categories</span><span class="filter-value">{active_categories}</span></div>
-        <div class="filter-row"><span>Lookback</span><span class="filter-value">Last {lookback_days}d</span></div>
-        <div class="filter-row"><span>Relevance floor</span><span class="filter-value">{min_relevance}</span></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if filtered:
+with st.sidebar:
+    with st.expander("📊 Feed Pulse", expanded=False):
         today_count = sum(1 for a in filtered if format_relative_time(a["publishedAt"]) == "Today")
         unique_sources = len(set(a["source"] for a in filtered))
-    else:
-        today_count, unique_sources = 0, 0
+        st.metric("Stories", len(filtered))
+        st.metric("Published Today", today_count)
+        st.metric("Unique Sources", unique_sources)
 
-    st.markdown(f"""
-    <div class="side-panel">
-        <div class="side-panel-title">📊 Feed Pulse</div>
-        <div class="pulse-row"><span>Total Stories</span><span class="pulse-value">{len(filtered)}</span></div>
-        <div class="pulse-row"><span>Published Today</span><span class="pulse-value">{today_count}</span></div>
-        <div class="pulse-row"><span>Unique Sources</span><span class="pulse-value">{unique_sources}</span></div>
-    </div>
-    """, unsafe_allow_html=True)
+    with st.expander("📥 Export", expanded=False):
+        if filtered:
+            df_export = pd.DataFrame(filtered)
+            csv = df_export.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download Briefing CSV",
+                data=csv,
+                file_name=f"audit_intel_briefing_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="download_csv_sidebar",
+            )
 
-    st.markdown("""
-    <div class="cta-panel">
-        <div class="cta-title">Audit Intelligence Brief</div>
-        <div class="cta-desc">Export this briefing as a CSV for Audit Committee and Chief Risk Officer distribution.</div>
-    </div>
-    """, unsafe_allow_html=True)
-    if filtered:
-        df_export = pd.DataFrame(filtered)
-        csv = df_export.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Download Briefing CSV",
-            data=csv,
-            file_name=f"audit_intel_briefing_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.csv",
-            mime="text/csv",
-            use_container_width=True,
-            key="download_csv_sidebar",
-        )
+    st.caption("Audit Intelligence · Internal banking risk & controls briefing")
 
 
-# ---------------------------------------------------------
 # 11. FOOTER
 # ---------------------------------------------------------
 
