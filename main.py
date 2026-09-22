@@ -542,6 +542,62 @@ st.markdown("""
     .sidebar-nav-item.active { background:#EAF1FF; color:#2563EB; font-weight:800; }
     .sidebar-nav-icon { width:18px; text-align:center; font-size:16px; color:#64748B; }
     .sidebar-nav-item.active .sidebar-nav-icon { color:#2563EB; }
+
+    .category-strip-label {
+        font-size:10px;
+        color:#94A3B8;
+        font-weight:800;
+        letter-spacing:1.2px;
+        text-transform:uppercase;
+        margin:18px 0 8px;
+    }
+    .main-category-caption {
+        font-size:10px;
+        color:#94A3B8;
+        font-weight:800;
+        letter-spacing:1.2px;
+        text-transform:uppercase;
+        margin:4px 0 8px;
+    }
+    .main-category-row [data-testid="stButton"] > button {
+        min-height:42px !important;
+        border-radius:9px !important;
+        border:1px solid #D6DEE9 !important;
+        background:#FFFFFF !important;
+        color:#13213A !important;
+        box-shadow:0 1px 2px rgba(15,23,42,.025) !important;
+        font-weight:700 !important;
+        font-size:12px !important;
+        padding:8px 10px !important;
+    }
+    .main-category-row [data-testid="stButton"] > button:hover {
+        border-color:#9DB8EF !important;
+        background:#F7FAFF !important;
+        color:#2563EB !important;
+    }
+    .main-category-row [data-testid="stButton"] > button[kind="primary"] {
+        background:#2563EB !important;
+        border-color:#2563EB !important;
+        color:#FFFFFF !important;
+        box-shadow:0 5px 14px rgba(37,99,235,.18) !important;
+    }
+    .main-category-row [data-testid="stButton"] > button[kind="primary"] * {
+        color:#FFFFFF !important;
+        -webkit-text-fill-color:#FFFFFF !important;
+    }
+    .sidebar-category-btn [data-testid="stButton"] > button {
+        text-align:left !important;
+        background:#FFFFFF !important;
+        color:#475569 !important;
+        border:0 !important;
+        box-shadow:none !important;
+        padding:7px 10px !important;
+        min-height:34px !important;
+    }
+    .sidebar-category-btn [data-testid="stButton"] > button:hover {
+        background:#EFF5FF !important;
+        color:#2563EB !important;
+    }
     .sidebar-status { padding:18px 4px 16px; border-bottom:1px solid #E5E7EB; }
     .sidebar-kicker { font-size:9.5px; color:#94A3B8; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; }
     .sidebar-live-row { display:flex; align-items:center; justify-content:space-between; margin-top:9px; }
@@ -583,30 +639,32 @@ st.markdown("""
         .featured-progress { left:20px; right:20px; }
     }
 
-    /* ---------------- Insight cards ---------------- */
-    /* ---------------- Two-column newsroom feed ---------------- */
+    /* ---------------- News-site card grid ---------------- */
     .insight-card {
         display:flex;
-        flex-direction:row;
-        gap:14px;
-        min-height:148px;
+        flex-direction:column;
+        gap:10px;
+        min-height:360px;
+        height:100%;
         background:#FFFFFF;
-        border:1px solid #DDE3EA;
-        border-radius:6px;
-        padding:12px;
-        margin-bottom:14px;
-        transition:border-color .15s ease, box-shadow .15s ease;
-        box-shadow:0 1px 2px rgba(15,23,42,.025);
+        border:1px solid #E2E8F0;
+        border-radius:12px;
+        padding:10px;
+        margin-bottom:16px;
+        transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+        box-shadow:0 2px 8px rgba(15,23,42,.045);
+        overflow:hidden;
     }
     .insight-card:hover {
-        border-color:#B8C5D6;
-        box-shadow:0 5px 16px rgba(15,23,42,.06);
+        transform:translateY(-2px);
+        border-color:#C9D7EE;
+        box-shadow:0 10px 24px rgba(15,23,42,.09);
     }
     .insight-thumb {
-        width:138px;
-        min-width:138px;
-        height:122px;
-        border-radius:4px;
+        width:100%;
+        min-width:0;
+        height:142px;
+        border-radius:9px;
         object-fit:cover;
         background-color:#EEF2F7;
         background-repeat:no-repeat;
@@ -614,13 +672,14 @@ st.markdown("""
         background-size:52px 52px;
         border:1px solid #E1E6EC;
         display:block;
+        flex-shrink:0;
     }
     .insight-content {
         display:flex;
         flex-direction:column;
         min-width:0;
         flex:1;
-        padding:0;
+        padding:0 2px 2px;
     }
     .insight-meta-row {
         display:flex;
@@ -1654,7 +1713,9 @@ with st.sidebar:
         <div class="sidebar-nav-item"><span class="sidebar-nav-icon">◉</span>Diagnostics</div>
     </div>
 
-    <div class="sidebar-status">
+    <div class="category-strip-label">Categories</div>
+    <div class="sidebar-category-btn">
+
         <div class="sidebar-kicker"><span class="sidebar-live-dot" style="display:inline-block;margin-right:6px;"></span>Live Data</div>
         <div class="sidebar-live-row">
             <div class="sidebar-live-left">NewsAPI</div>
@@ -1663,8 +1724,23 @@ with st.sidebar:
         <div class="sidebar-updated">Last updated<br>{st.session_state.get("last_refresh", "waiting for first load")}</div>
     </div>
 
-    <div class="sidebar-quick-title">Quick Controls</div>
+    </div>
     """, unsafe_allow_html=True)
+
+    # Sidebar category navigation is real Streamlit interaction, not decorative HTML.
+    for _cat_key, _cat_label in [
+        ("All News", "All News"),
+        ("Transformation", "Transformation"),
+        ("Regulation", "Regulation"),
+        ("People", "People"),
+        ("Cyber & Tech", "Cyber & Technology"),
+        ("Global Banks", "Global Banks"),
+    ]:
+        if st.button(_cat_label, key=f"sidebar_category_{_cat_key}", use_container_width=True):
+            st.session_state["active_category"] = _cat_key
+            st.rerun()
+
+    st.markdown('<div class="sidebar-quick-title">Quick Controls</div>', unsafe_allow_html=True)
 
     hard_refresh = st.button("⟳  Refresh All Data", use_container_width=True, type="primary", key="refresh_all")
     if hard_refresh:
@@ -1710,7 +1786,15 @@ articles = st.session_state.get("news", [])
 errors = st.session_state.get("news_errors", [])
 stats = st.session_state.get("news_stats", {})
 
-filtered = [a for a in articles if a["category"] in selected_categories] if selected_categories else []
+if "active_category" not in st.session_state:
+    st.session_state["active_category"] = "All News"
+
+active_category = st.session_state["active_category"]
+
+if active_category == "All News":
+    filtered = [a for a in articles if a["category"] in selected_categories] if selected_categories else []
+else:
+    filtered = [a for a in articles if a["category"] == active_category]
 
 with st.sidebar:
     with st.expander("🔎 Diagnostics", expanded=False):
@@ -1728,9 +1812,31 @@ with st.sidebar:
 # ---------------------------------------------------------
 
 st.markdown(
-    f'<div class="news-section-title"><div><div class="news-section-title-main" style="font-size:22px;">Today’s Banking Intelligence</div><div style="font-size:11px;color:#718096;margin-top:4px;">Banking · Regulation · Risk · Technology</div></div><div class="news-section-title-sub">{ist_now_str()}</div></div>',
+    f'<div class="news-section-title"><div><div class="news-section-title-main" style="font-size:22px;">Latest News &amp; Insights</div><div style="font-size:11px;color:#718096;margin-top:4px;">Real-time updates from global sources relevant to audit, risk and compliance</div></div><div class="news-section-title-sub">{ist_now_str()}</div></div>',
     unsafe_allow_html=True,
 )
+
+# Interactive category filters — mirrors the reference newsroom layout.
+st.markdown('<div class="main-category-caption">Filter</div>', unsafe_allow_html=True)
+_category_options = [
+    ("All News", "All News"),
+    ("Transformation", "Transformation"),
+    ("Regulation", "Regulation"),
+    ("People", "People"),
+    ("Cyber & Tech", "Cyber & Technology"),
+    ("Global Banks", "Global Banks"),
+]
+_category_cols = st.columns(6, gap="small")
+for _col, (_cat_key, _cat_label) in zip(_category_cols, _category_options):
+    with _col:
+        if st.button(
+            _cat_label,
+            key=f"main_category_{_cat_key}",
+            type="primary" if active_category == _cat_key else "secondary",
+            use_container_width=True,
+        ):
+            st.session_state["active_category"] = _cat_key
+            st.rerun()
 
 # 9. RENDER HELPERS
 # ---------------------------------------------------------
@@ -1844,14 +1950,15 @@ def render_feed(rows, show_featured=False):
         render_featured_strip(rows, 4)
 
     st.markdown(
-        f'<div class="news-section-title"><div><div class="news-section-title-main">Latest Intelligence</div><div style="font-size:11px;color:#718096;margin-top:3px;">Two stories per row · newest first</div></div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
+        f'<div class="news-section-title"><div><div class="news-section-title-main">Latest Intelligence</div><div style="font-size:11px;color:#718096;margin-top:3px;">Five stories per row · newest first</div></div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
         unsafe_allow_html=True,
     )
 
-    # Two editorial cards per row keeps the main feed compact and scannable.
-    for start in range(0, len(rows), 2):
-        row = rows[start:start + 2]
-        cols = st.columns(2, gap="medium")
+    # Five-card desktop newsroom grid, matching the reference layout.
+    # Streamlit wraps columns on narrow viewports so the feed remains usable.
+    for start in range(0, len(rows), 5):
+        row = rows[start:start + 5]
+        cols = st.columns(5, gap="small", vertical_alignment="top", border=False)
         for col, art in zip(cols, row):
             with col:
                 render_insight_card(art)
