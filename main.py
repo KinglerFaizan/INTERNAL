@@ -1349,6 +1349,16 @@ BANKING_CONTEXT_TERMS = [
 ]
 
 
+def normalize_text(article):
+    """Combine article text fields into one normalized string for scoring."""
+    fields = [
+        article.get("title") or "",
+        article.get("description") or "",
+        article.get("content") or "",
+    ]
+    return " ".join(str(field) for field in fields).lower()
+
+
 def is_directly_banking(article):
     """Strict banking gate: only retain stories explicitly about banking."""
     text = normalize_text(article)
