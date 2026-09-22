@@ -65,7 +65,16 @@ st.markdown("""
         border-bottom: 1px solid var(--border);
         margin-bottom: 8px;
     }
-    .topnav-left { display: flex; align-items: center; gap: 14px; }
+    .topnav-left { display: none; align-items: center; gap: 14px; }
+    .topnav { justify-content:flex-end; border-bottom:0; margin-bottom:12px; padding:0 0 4px; }
+    .topnav-right { width:100%; justify-content:flex-end; gap:18px; }
+    .top-search { flex:1; max-width:720px; height:40px; border-radius:10px; background:#F3F7FC; border:1px solid #E4EAF2; font-size:12px; color:#8A97AA; box-shadow:none; }
+    .topnav-user { border:0; background:transparent; box-shadow:none; padding:0; gap:12px; }
+    .topnav-user-meta { text-align:left; }
+    .topnav-user-label, .topnav-user-title, .topnav-user-stamp { display:none; }
+    .topnav-user-name { font-size:13px; font-weight:800; color:#12244A; }
+    .avatar-circle-lg { width:38px; height:38px; font-size:13px; }
+
     .topnav-right { display:flex; align-items:center; gap:20px; }
 
     /* ---- Emblem: deep navy tile, inner bevel, blue rim glow ---- */
