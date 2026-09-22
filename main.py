@@ -313,6 +313,21 @@ st.markdown("""
     }
     .stButton>button * { color: #fff !important; -webkit-text-fill-color: #fff !important; }
     .stButton>button:hover { background: var(--accent-blue-dark); }
+    .stButton>button[kind="secondary"] {
+        background:#FFFFFF !important;
+        color:#13213A !important;
+        border:1px solid #D6DEE9 !important;
+        box-shadow:0 1px 2px rgba(15,23,42,.025) !important;
+    }
+    .stButton>button[kind="secondary"]:hover {
+        background:#F7FAFF !important;
+        border-color:#9DB8EF !important;
+        color:#2563EB !important;
+    }
+    .stButton>button[kind="secondary"] * {
+        color:#13213A !important;
+        -webkit-text-fill-color:#13213A !important;
+    }
     [data-testid="stDownloadButton"]>button {
         background: #fff;
         color: var(--accent-blue) !important;
