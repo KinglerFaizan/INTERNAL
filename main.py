@@ -379,42 +379,154 @@ st.markdown("""
     }
     .featured-meta { font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
     .featured-link-overlay { position: absolute; inset: 0; z-index: 3; }
-    .featured-carousel { position:relative; height:390px; margin:8px 0 30px; border-radius:18px; overflow:hidden; background:#0F172A; box-shadow:0 12px 34px rgba(15,23,42,.12); }
-    .featured-slide { position:absolute; inset:0; opacity:0; transform:scale(1.015); animation:featuredCycle 24s infinite; animation-fill-mode:both; }
+    /* ---------------- Enterprise featured briefing ---------------- */
+    .featured-carousel {
+        position:relative;
+        height:360px;
+        margin:10px 0 28px;
+        border:1px solid #D9E0EA;
+        border-radius:8px;
+        overflow:hidden;
+        background:#0B1728;
+        box-shadow:0 8px 24px rgba(15,23,42,.07);
+    }
+    .featured-slide {
+        position:absolute;
+        inset:0;
+        opacity:0;
+        animation:featuredCycle 28s infinite;
+        animation-fill-mode:both;
+    }
     .featured-slide:nth-child(2) { animation-delay:0s; }
-    .featured-slide:nth-child(3) { animation-delay:6s; }
-    .featured-slide:nth-child(4) { animation-delay:12s; }
-    .featured-slide:nth-child(5) { animation-delay:18s; }
-    .featured-slide-bg { position:absolute; inset:0; background-size:cover; background-position:center; background-color:#172554; }
-    .featured-slide-bg::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(2,6,23,.88) 0%,rgba(2,6,23,.62) 48%,rgba(2,6,23,.20) 100%),linear-gradient(0deg,rgba(2,6,23,.72) 0%,rgba(2,6,23,0) 58%); }
-    .featured-slide-content { position:absolute; left:34px; right:34px; bottom:30px; z-index:2; max-width:780px; }
-    .featured-slide-kicker { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
-    .featured-slide-rank { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#2563EB; color:#fff; font-size:11px; font-weight:900; box-shadow:0 5px 14px rgba(37,99,235,.35); }
-    .featured-slide-tag { display:inline-flex; align-items:center; padding:5px 10px; border-radius:999px; color:#fff; font-size:10px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; background:rgba(37,99,235,.88); border:1px solid rgba(255,255,255,.22); }
-    .featured-slide-title { color:#fff; font-size:29px; font-weight:850; line-height:1.22; letter-spacing:-.5px; text-decoration:none; text-shadow:0 2px 18px rgba(0,0,0,.32); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-    .featured-slide-title:hover { color:#DBEAFE; }
-    .featured-slide-meta { color:rgba(255,255,255,.78); font-size:12px; margin-top:12px; font-weight:600; }
-    .featured-progress { position:absolute; left:34px; right:34px; top:20px; z-index:4; display:flex; gap:6px; }
-    .featured-progress span { flex:1; height:3px; border-radius:99px; background:rgba(255,255,255,.25); overflow:hidden; position:relative; }
-    .featured-progress span::after { content:""; position:absolute; inset:0; background:#fff; transform:scaleX(0); transform-origin:left; animation:featuredProgress 24s linear infinite; }
+    .featured-slide:nth-child(3) { animation-delay:7s; }
+    .featured-slide:nth-child(4) { animation-delay:14s; }
+    .featured-slide:nth-child(5) { animation-delay:21s; }
+
+    .featured-slide-bg {
+        position:absolute;
+        right:0;
+        top:0;
+        bottom:0;
+        width:52%;
+        background-size:cover;
+        background-position:center;
+        background-color:#17253A;
+    }
+    .featured-slide-bg::after {
+        content:"";
+        position:absolute;
+        inset:0;
+        background:linear-gradient(90deg,#0B1728 0%,rgba(11,23,40,.94) 18%,rgba(11,23,40,.40) 62%,rgba(11,23,40,.08) 100%);
+    }
+    .featured-slide-content {
+        position:absolute;
+        left:42px;
+        top:0;
+        bottom:0;
+        width:54%;
+        z-index:2;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        padding:34px 20px 34px 0;
+    }
+    .featured-slide-kicker {
+        display:flex;
+        align-items:center;
+        gap:10px;
+        margin-bottom:18px;
+    }
+    .featured-slide-rank {
+        width:auto;
+        height:auto;
+        display:inline-block;
+        color:#8EA4C0;
+        background:transparent;
+        font-size:11px;
+        font-weight:800;
+        letter-spacing:1.5px;
+        box-shadow:none;
+    }
+    .featured-slide-tag {
+        display:inline-flex;
+        align-items:center;
+        padding:4px 8px;
+        border-radius:3px;
+        color:#DCE9FA !important;
+        font-size:9px;
+        font-weight:800;
+        letter-spacing:1px;
+        text-transform:uppercase;
+        background:rgba(37,99,235,.18) !important;
+        border:1px solid rgba(147,197,253,.25);
+    }
+    .featured-slide-title {
+        color:#FFFFFF;
+        font-size:28px;
+        font-weight:750;
+        line-height:1.24;
+        letter-spacing:-.35px;
+        text-decoration:none;
+        max-width:720px;
+        display:-webkit-box;
+        -webkit-line-clamp:3;
+        -webkit-box-orient:vertical;
+        overflow:hidden;
+    }
+    .featured-slide-title:hover { color:#DCE9FA; }
+    .featured-slide-meta {
+        color:#AAB8C9;
+        font-size:11px;
+        margin-top:18px;
+        font-weight:500;
+        letter-spacing:.15px;
+    }
+    .featured-slide-kicker::before {
+        content:"FEATURED";
+        color:#8EA4C0;
+        font-size:9px;
+        font-weight:800;
+        letter-spacing:1.4px;
+        margin-right:2px;
+    }
+    .featured-progress {
+        position:absolute;
+        left:42px;
+        right:42px;
+        bottom:20px;
+        z-index:4;
+        display:flex;
+        gap:5px;
+    }
+    .featured-progress span {
+        flex:1;
+        height:2px;
+        border-radius:0;
+        background:rgba(255,255,255,.18);
+        overflow:hidden;
+        position:relative;
+    }
+    .featured-progress span::after {
+        content:"";
+        position:absolute;
+        inset:0;
+        background:#7EA6D8;
+        transform:scaleX(0);
+        transform-origin:left;
+        animation:featuredProgress 28s linear infinite;
+    }
     .featured-progress span:nth-child(1)::after { animation-delay:0s; }
-    .featured-progress span:nth-child(2)::after { animation-delay:6s; }
-    .featured-progress span:nth-child(3)::after { animation-delay:12s; }
-    .featured-progress span:nth-child(4)::after { animation-delay:18s; }
+    .featured-progress span:nth-child(2)::after { animation-delay:7s; }
+    .featured-progress span:nth-child(3)::after { animation-delay:14s; }
+    .featured-progress span:nth-child(4)::after { animation-delay:21s; }
+
     @keyframes featuredCycle {
-        0%, 24% { opacity:1; transform:scale(1); }
-        25%, 100% { opacity:0; transform:scale(1.015); }
+        0%, 23% { opacity:1; }
+        26%, 100% { opacity:0; }
     }
     @keyframes featuredProgress {
-        0%, 24% { transform:scaleX(1); }
-        25%, 100% { transform:scaleX(0); }
-    }
-    .featured-reduced-motion { animation:none !important; }
-    @media (prefers-reduced-motion: reduce) {
-        .featured-slide { animation:none !important; opacity:0; transform:none; }
-        .featured-slide:first-child { opacity:1; }
-        .featured-progress span::after { animation:none !important; }
-        .featured-progress span:first-child::after { transform:scaleX(1); }
+        0%, 23% { transform:scaleX(1); }
+        26%, 100% { transform:scaleX(0); }
     }
 
     /* ---------------- Application shell / sidebar ---------------- */
@@ -472,55 +584,119 @@ st.markdown("""
     }
 
     /* ---------------- Insight cards ---------------- */
+    /* ---------------- Two-column newsroom feed ---------------- */
     .insight-card {
         display:flex;
-        flex-direction:column;
-        gap:0;
-        height:100%;
-        background:var(--card);
-        border:1px solid var(--border);
-        border-radius:15px;
+        flex-direction:row;
+        gap:14px;
+        min-height:148px;
+        background:#FFFFFF;
+        border:1px solid #DDE3EA;
+        border-radius:6px;
         padding:12px;
-        margin-bottom:0;
-        transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
-        box-shadow:0 4px 16px rgba(15,23,42,.045);
+        margin-bottom:14px;
+        transition:border-color .15s ease, box-shadow .15s ease;
+        box-shadow:0 1px 2px rgba(15,23,42,.025);
     }
-    .insight-card:hover { transform:translateY(-2px); border-color:#CBD5E1; box-shadow:0 10px 26px rgba(15,23,42,.09); }
+    .insight-card:hover {
+        border-color:#B8C5D6;
+        box-shadow:0 5px 16px rgba(15,23,42,.06);
+    }
     .insight-thumb {
-        width:100%; min-width:0; height:170px;
-        border-radius:11px;
+        width:138px;
+        min-width:138px;
+        height:122px;
+        border-radius:4px;
         object-fit:cover;
         background-color:#EEF2F7;
         background-repeat:no-repeat;
         background-position:center;
         background-size:52px 52px;
-        border:1px solid #E5E7EB;
+        border:1px solid #E1E6EC;
         display:block;
-        margin-bottom:12px;
     }
-    .insight-content { display:flex; flex-direction:column; min-width:0; flex:1; padding:1px 3px 2px; }
-    .insight-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .insight-content {
+        display:flex;
+        flex-direction:column;
+        min-width:0;
+        flex:1;
+        padding:0;
+    }
+    .insight-meta-row {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        margin-bottom:7px;
+    }
     .badge {
-        display: inline-block; color: #fff; font-size: 10.5px; font-weight: 700;
-        padding: 3px 10px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.4px;
+        display:inline-block;
+        color:#35506F !important;
+        background:#F1F5F9 !important;
+        border:1px solid #D8E0E9;
+        font-size:8.5px;
+        font-weight:800;
+        padding:3px 6px;
+        border-radius:3px;
+        text-transform:uppercase;
+        letter-spacing:.65px;
     }
-    .insight-date { font-size: 12px; color: var(--text-muted); font-weight: 500; }
-    .insight-title-link { text-decoration: none; }
+    .insight-date {
+        font-size:10px;
+        color:#7A8797;
+        font-weight:500;
+    }
+    .insight-title-link { text-decoration:none; }
     .insight-title {
-        font-size: 17px; font-weight: 700; color: #0B1220;
-        line-height: 1.35; margin-bottom: 6px;
+        font-size:14.5px;
+        font-weight:750;
+        color:#172033;
+        line-height:1.36;
+        margin-bottom:5px;
+        display:-webkit-box;
+        -webkit-line-clamp:3;
+        -webkit-box-orient:vertical;
+        overflow:hidden;
     }
-    .insight-title-link:hover .insight-title { color: var(--accent-blue); }
+    .insight-title-link:hover .insight-title { color:#1D4ED8; }
     .insight-desc {
-        font-size: 13.5px; color: var(--text-secondary); line-height: 1.55;
-        margin-bottom: 12px;
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        font-size:11.5px;
+        color:#687587;
+        line-height:1.45;
+        margin-bottom:7px;
+        display:-webkit-box;
+        -webkit-line-clamp:2;
+        -webkit-box-orient:vertical;
+        overflow:hidden;
     }
-    .insight-footer { display: flex; justify-content: flex-end; align-items: center; margin-top: auto; }
+    .insight-footer {
+        display:flex;
+        justify-content:flex-start;
+        align-items:center;
+        margin-top:auto;
+    }
     .read-link {
-        font-size: 12.5px; font-weight: 700; color: var(--accent-blue); text-decoration: none;
+        font-size:10.5px;
+        font-weight:750;
+        color:#2563EB;
+        text-decoration:none;
     }
-    .read-link:hover { text-decoration: underline; }
+    .read-link:hover { text-decoration:underline; }
+
+    @media (max-width:1050px) {
+        .featured-slide-bg { width:46%; }
+        .featured-slide-content { width:68%; left:28px; }
+        .featured-progress { left:28px; right:28px; }
+    }
+    @media (max-width:700px) {
+        .featured-carousel { height:400px; }
+        .featured-slide-bg { width:100%; }
+        .featured-slide-bg::after { background:linear-gradient(90deg,rgba(11,23,40,.94),rgba(11,23,40,.70)); }
+        .featured-slide-content { width:auto; left:22px; right:22px; padding-right:0; }
+        .featured-slide-title { font-size:23px; }
+        .featured-progress { left:22px; right:22px; }
+        .insight-card { min-height:0; }
+        .insight-thumb { width:112px; min-width:112px; height:100px; }
+    }
 
     /* ---------------- Right sidebar panels ---------------- */
     .side-panel {
@@ -1552,7 +1728,7 @@ with st.sidebar:
 # ---------------------------------------------------------
 
 st.markdown(
-    f'<div class="news-section-title"><div><div class="news-section-title-main" style="font-size:24px;">⚡ Today’s Top Banking News</div><div style="font-size:12px;color:#64748B;margin-top:3px;">Key developments in banking, regulation, risk and technology</div></div><div class="news-section-title-sub">{ist_now_str()}</div></div>',
+    f'<div class="news-section-title"><div><div class="news-section-title-main" style="font-size:22px;">Today’s Banking Intelligence</div><div style="font-size:11px;color:#718096;margin-top:4px;">Banking · Regulation · Risk · Technology</div></div><div class="news-section-title-sub">{ist_now_str()}</div></div>',
     unsafe_allow_html=True,
 )
 
@@ -1631,7 +1807,7 @@ def render_featured_strip(rows, limit=4):
             f'<span class="featured-slide-tag" style="background:{color};">{label}</span>'
             f'</div>'
             f'<a class="featured-slide-title" href="{article["url"]}" target="_blank">{title}</a>'
-            f'<div class="featured-slide-meta">{source} · {format_relative_time(article["publishedAt"])} · Featured intelligence</div>'
+            f'<div class="featured-slide-meta">{source} · {format_relative_time(article["publishedAt"])} · Audit Intelligence</div>'
             f'</div></div>'
         )
 
@@ -1668,7 +1844,7 @@ def render_feed(rows, show_featured=False):
         render_featured_strip(rows, 4)
 
     st.markdown(
-        f'<div class="news-section-title"><div><div class="news-section-title-main">Latest Insights</div><div style="font-size:12px;color:#64748B;margin-top:3px;">Two stories per row · newest intelligence first</div></div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
+        f'<div class="news-section-title"><div><div class="news-section-title-main">Latest Intelligence</div><div style="font-size:11px;color:#718096;margin-top:3px;">Two stories per row · newest first</div></div><div class="news-section-title-sub">{len(rows)} STORIES</div></div>',
         unsafe_allow_html=True,
     )
 
