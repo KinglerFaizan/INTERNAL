@@ -3,6 +3,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
+import html
 import xml.etree.ElementTree as ET
 
 import pandas as pd
@@ -1270,13 +1271,58 @@ def get_api_key():
     return ""
 
 
-def normalize_text(article):
-    fields = [
-        article.get("title") or "",
-        article.get("description") or "",
-        article.get("content") or "",
-    ]
-    return " ".join(fields).lower()
+def clean_html_text(value, fallback=""):
+    """Convert scraped HTML fragments into safe, readable plain text."""
+    value = html.unescape(str(value or ""))
+    value = re.sub(r"<script\\b[^>]*>.*?</script>", " ", value, flags=re.I | re.S)
+    value = re.sub(r"<style\\b[^>]*>.*?</style>", " ", value, flags=re.I | re.S)
+    value = re.sub(r"<[^>]+>", " ", value)
+    value = html.unescape(value)
+    value = re.sub(r"\\s+", " ", value).strip()
+    return value or fallback
+
+
+def clean_url(value):
+    value = html.unescape(str(value or "")).strip()
+    value = re.sub(r"[<>\\\"']", "", value)
+    return value
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def extract_article_image(url):
+    """Resolve a Google News redirect and read the publisher's social image."""
+    if not url:
+        return ""
+    try:
+        response = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 Audit-Intelligence/1.0"},
+            timeout=8,
+            allow_redirects=True,
+        )
+        if not response.ok:
+            return ""
+
+        page = response.text[:1200000]
+        patterns = [
+            r'<meta[^>]+property=["\\\']og:image["\\\'][^>]+content=["\\\']([^"\\\']+)',
+            r'<meta[^>]+content=["\\\']([^"\\\']+)["\\\'][^>]+property=["\\\']og:image["\\\']',
+            r'<meta[^>]+name=["\\\']twitter:image["\\\'][^>]+content=["\\\']([^"\\\']+)',
+            r'<meta[^>]+content=["\\\']([^"\\\']+)["\\\'][^>]+name=["\\\']twitter:image["\\\']',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, page, flags=re.I)
+            if match:
+                image = html.unescape(match.group(1).strip())
+                if image.startswith("//"):
+                    image = "https:" + image
+                if image.startswith("http://") or image.startswith("https://"):
+                    return image
+    except Exception:
+        pass
+    return ""
+
+
 
 
 def _term_present(text, term):
@@ -1420,14 +1466,14 @@ def fetch_google_rss(category, query, lookback_days):
     root = ET.fromstring(response.content)
     rows = []
     for item in root.findall("./channel/item"):
-        title = (item.findtext("title") or "").strip()
-        link = (item.findtext("link") or "").strip()
+        title = clean_html_text(item.findtext("title") or "")
+        link = clean_url(item.findtext("link") or "")
+        raw_description = item.findtext("description") or ""
+        description = clean_html_text(raw_description)
         if not title or not link or title.lower().startswith("[removed]"):
             continue
-        description = re.sub(r"<[^>]+>", " ", item.findtext("description") or "")
-        description = re.sub(r"\\s+", " ", description).strip()
         source_node = item.find("source")
-        source = (source_node.text or "").strip() if source_node is not None else ""
+        source = clean_html_text(source_node.text if source_node is not None else "")
         rows.append({
             "title": title,
             "description": description,
@@ -1435,7 +1481,7 @@ def fetch_google_rss(category, query, lookback_days):
             "url": link,
             "urlToImage": "",
             "source": {"name": source or "Google News"},
-            "publishedAt": (item.findtext("pubDate") or "").strip(),
+            "publishedAt": clean_html_text(item.findtext("pubDate") or ""),
             "author": "",
             "_query_category": category,
         })
@@ -1517,6 +1563,29 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
 
     deduped_count = len(unique)
 
+    # Google News RSS does not reliably expose publisher hero images.
+    # Resolve the publisher page for a limited set of the newest stories and
+    # read its og:image/twitter:image so the cards use story-specific artwork.
+    if fallback_used:
+        enrichment_candidates = sorted(
+            unique.values(),
+            key=lambda a: a.get("publishedAt", ""),
+            reverse=True,
+        )[:60]
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            image_futures = {
+                executor.submit(extract_article_image, a.get("url", "")): a
+                for a in enrichment_candidates
+            }
+            for future in as_completed(image_futures):
+                article = image_futures[future]
+                try:
+                    image = future.result()
+                    if image:
+                        article["urlToImage"] = image
+                except Exception:
+                    pass
+
     cleaned = []
     dropped_low_relevance = 0
 
@@ -1544,13 +1613,13 @@ def load_news(api_key, lookback_days, page_size, min_relevance):
             "category": category,
             "audit_relevance": relevance,
             "category_score": category_score,
-            "title": article.get("title") or "Untitled",
-            "description": article.get("description") or "",
-            "source": source.get("name") or "Institutional Source",
-            "publishedAt": published,
-            "url": article.get("url") or "",
-            "author": article.get("author") or "",
-            "image_url": article.get("urlToImage") or "",
+            "title": clean_html_text(article.get("title"), "Untitled"),
+            "description": clean_html_text(article.get("description")),
+            "source": clean_html_text(source.get("name"), "Institutional Source"),
+            "publishedAt": clean_html_text(published),
+            "url": clean_url(article.get("url")),
+            "author": clean_html_text(article.get("author")),
+            "image_url": clean_url(article.get("urlToImage")),
         })
 
     cleaned.sort(key=lambda x: (x["audit_relevance"], x["publishedAt"]), reverse=True)
@@ -1916,7 +1985,7 @@ if not api_key:
 # 7. DATA INGESTION & FILTERING
 # ---------------------------------------------------------
 
-params_key = (lookback_days, min_relevance)
+params_key = ("2026-09-22-newsroom-sanitize-v4", lookback_days, min_relevance)
 
 if ("news_loaded" not in st.session_state) or (st.session_state.get("params_key") != params_key):
     with st.spinner("Compiling the audit intelligence briefing..."):
@@ -1990,17 +2059,20 @@ for _col, (_cat_key, _cat_label) in zip(_category_cols, _category_options):
 
 def render_insight_card(article):
     color = CATEGORY_COLORS.get(article["category"], "#2563EB")
-    label = CATEGORY_DISPLAY.get(article["category"], article["category"])
-    rel_time = format_relative_time(article["publishedAt"])
-    description_text = article["description"] or "Independent institutional briefing coverage. Select the source to review the full verified story."
-
+    label = clean_html_text(CATEGORY_DISPLAY.get(article["category"], article["category"]))
+    rel_time = clean_html_text(format_relative_time(article["publishedAt"]))
+    title = clean_html_text(article.get("title"), "Untitled")
+    description_text = clean_html_text(
+        article.get("description"),
+        "Independent institutional briefing coverage. Select the source to review the full verified story.",
+    )
+    source_name = clean_html_text(article.get("source"), "Verified source")
+    article_url = clean_url(article.get("url"))
+    image_url = clean_url(article.get("image_url"))
     fallback = placeholder_data_uri(color)
-    image_url = article.get("image_url") or fallback
-    # If a publisher blocks hotlinking, fall back to the generated category placeholder.
-    safe_image = image_url.replace("&", "&amp;").replace('"', "&quot;")
-    source_name = (article.get("source") or "Verified source").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    title = (article.get("title") or "Untitled").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    description_text = description_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    safe_image = html.escape(image_url or fallback, quote=True)
+    safe_fallback = html.escape(fallback, quote=True)
+    safe_url = html.escape(article_url, quote=True)
 
     st.markdown(f"""
     <article class="insight-card">
@@ -2010,32 +2082,31 @@ def render_insight_card(article):
             alt=""
             loading="lazy"
             referrerpolicy="no-referrer"
-            onerror="this.onerror=null;this.src='{fallback}';"
+            onerror="this.onerror=null;this.src='{safe_fallback}';"
         />
         <div class="insight-content">
             <div class="insight-meta-row">
-                <span class="badge" style="color:#1769E8 !important;">{label}</span>
-                <span class="insight-date">{rel_time}</span>
+                <span class="badge">{html.escape(label)}</span>
+                <span class="insight-date">{html.escape(rel_time)}</span>
             </div>
 
-            <a href="{article['url']}" target="_blank" class="insight-title-link">
-                <div class="insight-title">{title}</div>
+            <a href="{safe_url}" target="_blank" rel="noopener noreferrer" class="insight-title-link">
+                <div class="insight-title">{html.escape(title)}</div>
             </a>
 
-            <div class="insight-desc">{description_text}</div>
+            <div class="insight-desc">{html.escape(description_text)}</div>
 
             <div class="insight-footer">
                 <div class="insight-source">
-                    <span class="insight-source-name">{source_name}</span>
+                    <span class="insight-source-name">{html.escape(source_name)}</span>
                     <span aria-hidden="true">·</span>
-                    <span class="insight-source-time">{rel_time}</span>
+                    <span class="insight-source-time">{html.escape(rel_time)}</span>
                 </div>
-                <a href="{article['url']}" target="_blank" class="insight-bookmark" aria-label="Open source">↗</a>
+                <a href="{safe_url}" target="_blank" rel="noopener noreferrer" class="insight-bookmark" aria-label="Open source">↗</a>
             </div>
         </div>
     </article>
     """, unsafe_allow_html=True)
-
 
 
 def priority_score(article):
