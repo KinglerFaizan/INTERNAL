@@ -1363,13 +1363,7 @@ def render_source_panel(rows, limit=5):
 
 # Renders the embedded portrait; falls back to the initial-letter circle only
 # if the base64 constant above is somehow empty.
-if PRAGATI_PHOTO_B64.strip():
-    avatar_html = (
-        f'<img src="data:image/jpeg;base64,{PRAGATI_PHOTO_B64}" '
-        f'class="avatar-photo" alt="{PRAGATI_NAME}" />'
-    )
-else:
-    avatar_html = f'<div class="avatar-circle-lg">{PRAGATI_NAME[:1].upper()}</div>'
+avatar_html = '<div class="avatar-circle-lg">P</div>'
 
 # Emblem: an audit lens (magnifier) whose glass contains a rising analytics
 # bar chart, framed by a scanning arc — "examine + measure + monitor".
@@ -1424,7 +1418,7 @@ st.markdown(f"""
 # 5. ACTION BAR + SIDEBAR CONTROLS
 # ---------------------------------------------------------
 
-api_key = get_api_key()
+api_key = NEWSAPI_KEY.strip()
 hard_refresh = False
 
 with st.sidebar:
@@ -1473,7 +1467,6 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-note">API credentials are embedded in the application code.</div>', unsafe_allow_html=True)
 
-api_key = NEWSAPI_KEY.strip()
 if not api_key or api_key == "PASTE_YOUR_NEWSAPI_KEY_HERE":
     with st.sidebar:
         st.error("Add your NewsAPI key to NEWSAPI_KEY in main.py.")
@@ -1518,7 +1511,7 @@ with st.sidebar:
 # ---------------------------------------------------------
 
 st.markdown(
-    '<div class="news-section-title"><div><div class="news-section-title-main" style="font-size:24px;">⚡ Today’s Top Banking News</div><div style="font-size:12px;color:#64748B;margin-top:3px;">Key developments in banking, regulation, risk and technology</div></div><div class="news-section-title-sub">{ist_now_str()}</div></div>',
+    f'<div class="news-section-title"><div><div class="news-section-title-main" style="font-size:24px;">⚡ Today’s Top Banking News</div><div style="font-size:12px;color:#64748B;margin-top:3px;">Key developments in banking, regulation, risk and technology</div></div><div class="news-section-title-sub">{ist_now_str()}</div></div>',
     unsafe_allow_html=True,
 )
 
